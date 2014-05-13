@@ -1,0 +1,9 @@
+#!/bin/bash
+for i in `ls /var/www/downloads/addons`; do 
+    /usr/local/bin/repo_catxml-new.py -p "/var/www/downloads/addons/${i}" -d "/var/www/downloads/addons/${i}/addons.xml" >/dev/null 2>&1;
+done
+
+
+#for j in `ls /var/www/downloads/addons/gotham/pvr`; do
+#   /usr/local/bin/repo_catxml-new.py -p "/var/www/downloads/addons/gotham/pvr/${j}" -d "/var/www/downloads/addons/gotham/pvr/${j}/addons.xml" >/dev/null 2>&1;
+#done
