@@ -1,0 +1,35 @@
+#!/bin/bash
+
+#repos=("plugins" "skins" "scrapers" "scripts" "screensavers" "visualizations" "webinterfaces" "services" "subtitles")
+repos=("plugins" "skins" "scrapers" "scripts" "webinterfaces")
+gitrepo="/home/git/addons-git"
+dest="/var/www/downloads/addons"
+#dest="/home/git/downloads/addons"
+
+
+#$gitrepo created with:
+#rm -rf $gitrepo/* $dest/*
+#for (( i=0; i<${#repos[*]}; i++ )); do
+#  #git clone --no-checkout "git://xbmc.git.sourceforge.net/gitroot/xbmc/${repos[$i]}" "${gitrepo}/$repos{[$i]}"
+#  git clone --no-checkout "git clone git://git.code.sf.net/p/xbmc/${repos[$i]}" "${gitrepo}/$repos"
+#done
+
+for (( i=0; i<${#repos[*]}; i++ )); do
+  for j in `/usr/local/bin/gitbridge -q -r ${gitrepo}/${repos[$i]} -d ${dest} -i`; do
+    for (( k=0; k<${#touchedbranches[*]}; k++ )); do
+      if [ "${touchedbranches[$k]}" = "${j}" ]; then
+        touchedbranches[k]=""
+      fi
+    done
+    touchedbranches=( "${touchedbranches[@]}" "${j}" )
+  done
+done
+if [ -n "`echo ${touchedbranches[@]}`" ]; then echo `date`": touched branches: "${touchedbranches[*]} >> /tmp/repo.txt; fi
+for (( i=0; i<${#touchedbranches[*]}; i++ )); do
+  if [ -n "${touchedbranches[$i]}" ] && [ -d "${dest}/${touchedbranches[$i]}" ]; then
+    #/usr/local/bin/catxml-new.py -p "${dest}/${touchedbranches[$i]}" -d "${dest}/${touchedbranches[$i]}/addons.xml" >/dev/null 2>&1
+    #echo "mb makehashes -t /home/git/hashes/var/www/downloads -b /var/www/downloads "${dest}/${touchedbranches[$i]}" --copy-permissions" >> /tmp/hash.txt
+    #mb makehashes -t /home/git/hashes/var/www/downloads -b /var/www/downloads "${dest}/${touchedbranches[$i]}" --copy-permissions >> /tmp/hash.txt
+    cat "${dest}/${touchedbranches[$i]}/addons.xml" | xmlstarlet sel -t -e "rss" -a "version" -o 2.0 -b -e "channel" -e "title" -o "XBMC Addons Feed" -b -e "description" -o "XBMC Addons Feed " -b -e "link" -o "http://xbmc.org/" -b -m "//addons/addon[position() &lt; 15]" -e "item" -e "title" -v "@name" -o ": " -v "@version" -b -e "author" -v "@provider-name" -b -e "link" -o "http://mirrors.xbmc.org/addons/${touchedbranches[$i]}/" -v "@id" -o "/" -v "@id" -o "-" -v "@version" -o ".zip" -b -e "description" -v "extension/description[@lang='en']" -b -b -b | xmlstarlet fo -o > "${dest}/${touchedbranches[$i]}/feed.xml"
+  fi
+done

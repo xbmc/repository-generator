@@ -1,0 +1,17 @@
+#!/bin/bash
+#bash for getting new addons, packaging them, creating addons.xml and md5 and update mirrorbrain
+# create .zip files from addons git
+/usr/local/bin/updaterepo
+sleep 1
+# create addons.xml for each repo
+/usr/local/bin/catxml-all
+sleep 1 
+# create addons.xml.md5 for each repo
+/usr/local/bin/catxml-md5
+#sleep 1
+# update mirrorbrain hashes
+#mb makehashes /var/www/downloads -t /home/mirrorbrain/hashes/var/www/downloads/ --copy-permissions
+#sleep 1
+#scan mirrors for to update file database
+#mb scan -j 4 -a -qq &> /dev/null
+

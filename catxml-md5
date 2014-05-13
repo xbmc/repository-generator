@@ -1,0 +1,20 @@
+#!/bin/bash
+for i in `ls /var/www/downloads/addons`; do 
+    md5sum /var/www/downloads/addons/${i}/addons.xml | cut -d ' ' -f 1 > /var/www/downloads/addons/${i}/addons.xml.md5
+done
+
+#PVR Gotham
+#for j in `ls /var/www/downloads/addons/gotham/pvr`; do
+#    md5sum /var/www/downloads/addons/gotham/pvr/${j}/addons.xml | cut -d ' ' -f 1 > /var/www/downloads/addons/gotham/pvr/${j}/addons.xml.md5
+#done
+
+
+
+
+
+
+#for i in `ls /home/git/downloads/addons`; do
+#    md5sum /home/git/downloads/addons/${i}/addons.xml | cut -d ' ' -f 1 > /home/git/downloads/addons/${i}/addons.xml.md5
+#done
+
+
