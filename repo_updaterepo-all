@@ -8,10 +8,4 @@ sleep 1
 sleep 1 
 # create addons.xml.md5 for each repo
 /usr/local/bin/repo_catxml-md5
-#sleep 1
-# update mirrorbrain hashes
-#mb makehashes /var/www/downloads -t /home/mirrorbrain/hashes/var/www/downloads/ --copy-permissions
-#sleep 1
-#scan mirrors for to update file database
-#mb scan -j 4 -a -qq &> /dev/null
 
