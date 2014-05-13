@@ -1,7 +1,7 @@
 #!/bin/bash
 #bash for getting new addons, packaging them, creating addons.xml and md5 and update mirrorbrain
 # create .zip files from addons git
-/usr/local/bin/updaterepo
+/usr/local/bin/repo_updaterepo
 sleep 1
 # create addons.xml for each repo
 /usr/local/bin/repo_catxml-all

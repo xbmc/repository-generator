@@ -25,7 +25,7 @@ quiet=0
 ignoremaster=0
 xmlfile="addon.xml"
 masterrename="master"
-tempdir="/tmp/repotemp"
+tempdir="/tmp/addons_repo"
 texturepacker="/usr/local/bin/TexturePacker"
 
 while getopts ":m:r:d:c q i" options; do
