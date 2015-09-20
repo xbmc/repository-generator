@@ -1,0 +1,296 @@
+#!/bin/bash
+#      Copyright (C) 2009-2013 Team XBMC
+#      http://xbmc.org
+#  This Program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2, or (at your option)
+#  any later version.
+#
+#  This Program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with XBMC; see the file COPYING.  If not, write to
+#  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+#  http://www.gnu.org/copyleft/gpl.html
+
+# Install these needed packages:
+# (7z, xmlstarlet, zip, texturepacker, liblzo2-2, libsdl-image1.2)
+
+export LD_LIBRARY_PATH=/usr/local/lib
+regen=0
+quiet=0
+ignoremaster=0
+keepold=2
+xmlfile="addon.xml"
+masterrename="master"
+tempdir="/tmp/repotmp"
+texturepacker="/usr/local/bin/TexturePacker"
+
+while getopts ":m:r:d:c:k: q i" options; do
+  case $options in
+    r ) repo=$OPTARG;;
+    d ) outdir=$OPTARG;;
+    c ) regen=1;;
+    q ) quiet=1;;
+    k ) keepold=$OPTARG;;
+    i ) ignoremaster=1;;
+    m ) masterrename=$OPTARG;;
+    * ) echo "Usage: gitbridge [OPTION]... -r [path] -d [path]
+      -r [path]                  path to git repo
+      -d [path]                  path to destination
+      -c                         rewrite entire repo, overrides -k
+      -m [string]                rename master branch to [string] at destination
+      -i                         ignore the master branch. overrides -m
+      -q                         quiet
+      -k [integer]               keep [integer] old addon zips
+
+      By default only changes since the last fetch will be written to the destination.
+      Use -c to override
+      "
+        exit 1;;
+  esac
+done
+
+if [ -z $repo ]; then
+  echo $repo
+  echo "no repo specified" >&2
+  exit 1
+fi
+if [ -z $outdir ]; then
+  echo "no destination specified" >&2
+  exit 1
+fi
+
+export GIT_WORK_TREE=${repo}
+export GIT_DIR=${repo}/.git
+
+function zipdir {
+  local branch=$1
+  local foldername=$2
+  local revid=$3
+
+  if [ "${branch}" = "master" ]; then local branch=${masterrename}; fi
+  local version=`git show "${revid}:${foldername}/${xmlfile}" | xmlstarlet sel -t -m "/addon" -v "@version"`
+  local id=`git show "${revid}:${foldername}/${xmlfile}" | xmlstarlet sel -t -m "/addon" -v "@id"`
+  local isskin="`git show "${revid}:${foldername}/${xmlfile}" | xmlstarlet sel -t -c "/addon/extension[@point='xbmc.gui.skin']"`"
+  #local isimagepack="`git show "${revid}:${foldername}/${xmlfile}" | xmlstarlet sel -t -c "/addon/extension[@point='kodi.resource.images']"`"
+  local compile_imagepack="`git show "${revid}:${foldername}/${xmlfile}" | xmlstarlet sel -t -c "/addon/extension[@compile='true']"`"
+  if [ -z "${version}" ] || [ -z "${id}" ]; then break; fi
+
+  if [ "$regen" = "1" ] && [ -d "${outdir}/${branch}/${foldername}" ]; then
+    rm -rf "${outdir}/${branch}/${foldername}"
+  fi
+  mkdir -p "${outdir}/${branch}/${foldername}"
+
+  if [ -n "`git ls-tree --name-only -r $revid | grep "${foldername}/icon.png"`" ] && [ -n "$(git show --stat $revid | grep "${foldername}/icon.png")" ]; then 
+    git show "$revid:${foldername}/icon.png" > "${outdir}/${branch}/${foldername}/icon.png"
+  fi
+  if [ -n "`git ls-tree --name-only -r $revid | grep "${foldername}/fanart.jpg"`" ] && [ -n "$(git show --stat $revid | grep "${foldername}/fanart.jpg")" ]; then
+    git show "$revid:${foldername}/fanart.jpg" > "${outdir}/${branch}/${foldername}/fanart.jpg"
+  fi
+  if [ -n "`git ls-tree --name-only -r $revid | grep "${foldername}/changelog.txt"`" ]; then
+    git show "$revid:${foldername}/changelog.txt" > "${outdir}/${branch}/${foldername}/changelog-${version}.txt"
+  fi
+
+  if [ -n "`git ls-tree --name-only -r $revid | grep "${foldername}/${xmlfile}"`" ]; then
+    git show "${revid}:${foldername}/${xmlfile}" > "${outdir}/${branch}/${foldername}/${xmlfile}"
+  fi
+
+  if [ ! -f "${outdir}/${branch}/${foldername}/${id}-${version}.zip" ]; then
+    if `git archive --format=zip $revid ${foldername}/ -o "${outdir}/${branch}/${foldername}/${id}-${version}.zip"`; then
+      if [ "$keepold" = "0" ]; then
+        local cleanstales=`ls ${outdir}/${branch}/${foldername}/${id}-*.zip ${outdir}/${branch}/${foldername}/changelog-*.txt 2>/dev/null | grep -v ${version}`
+      else
+        #local cleanstales=`ls ${outdir}/${branch}/${foldername}/changelog-*.txt 2>/dev/null | grep -v ${version}`
+        cleanupzips ${outdir}/${branch}/${foldername} ${id} ${version}
+      fi
+      [ "$quiet" = "0" ] && [ -n "$cleanstales" ] && echo "removing $cleanstales"
+      [ -n "$cleanstales" ] && rm $cleanstales
+
+      if [ -n "`git ls-tree --name-only -r $revid | grep "${foldername}/_screenshots"`" ]; then
+        git archive --format=zip -o $revid "${foldername}/_screenshots" > "${outdir}/${branch}/${foldername}/screenshots.zip"
+        7z d -r ${outdir}/${branch}/${foldername}/${id}-${version}.zip ${foldername}/_screenshots/ >/dev/null
+      fi
+      if [ -n "${isskin}" ]; then
+        mkdir -p "${tempdir}"
+        git archive --format=tar $revid "${foldername}/media" | tar -xf - -C "${tempdir}"
+        if [ -d "${tempdir}/${foldername}/media" ]; then
+          "${texturepacker}" -dupecheck -input "${tempdir}/${foldername}/media" -output "${tempdir}/${foldername}/media/Textures.xbt"
+        fi
+        git archive --format=tar $revid "${foldername}/themes" | tar -xf - -C "${tempdir}"
+        ls "${tempdir}/${foldername}/themes/" 2>/dev/null | while read themename; do
+          if [ -d "${tempdir}/${foldername}/themes/${themename}" ]; then
+            "${texturepacker}" -dupecheck -input "${tempdir}/${foldername}/themes/${themename}/" -output "${tempdir}/${foldername}/media/${themename}.xbt"
+          fi
+        done
+        if [ -f "${tempdir}/${foldername}/media/Textures.xbt" ]; then
+          pushd ${tempdir} >/dev/null
+          7z d -r ${outdir}/${branch}/${foldername}/${id}-${version}.zip ${foldername}/media/ >/dev/null
+          7z d -r ${outdir}/${branch}/${foldername}/${id}-${version}.zip ${foldername}/themes/ >/dev/null
+          zip -q -m ${outdir}/${branch}/${foldername}/${id}-${version}.zip ${foldername}/media/*.xbt
+          popd >/dev/null
+        fi
+      rm -rf "${tempdir}"
+      fi
+
+      if [ -n "${compile_imagepack}" ]; then
+        mkdir -p "${tempdir}"
+        git archive --format=tar $revid "${foldername}/resources" | tar -xf - -C "${tempdir}"
+        if [ -d "${tempdir}/${foldername}/resources" ]; then
+          "${texturepacker}" -dupecheck -input "${tempdir}/${foldername}/resources" -output "${tempdir}/${foldername}/resources/Textures.xbt"
+        fi
+        if [ -f "${tempdir}/${foldername}/resources/Textures.xbt" ]; then
+          pushd ${tempdir} >/dev/null
+          7z d -r ${outdir}/${branch}/${foldername}/${id}-${version}.zip ${foldername}/resources/ >/dev/null
+          zip -q -m ${outdir}/${branch}/${foldername}/${id}-${version}.zip ${foldername}/resources/*.xbt
+          popd >/dev/null
+        fi
+      rm -rf "${tempdir}"
+      fi
+    fi
+  fi
+}
+
+function cleanupzips {
+  local folder=$1
+  local id=$2
+  local curversion=$3
+  local n=0
+  local allzips=( $(ls ${folder}/${id}-*.zip | grep -v ${curversion}) )
+  local allchangelogs=( $(ls ${folder}/changelog-*.txt | grep -v ${curversion}) )
+  (( n=${#allzips[@]} - ${keepold} ))
+  (( c=${#allchangelogs[@]} - ${keepold} ))
+  if [ $n -gt 0 ]; then
+    [ "$quiet" = "0" ] && echo "removing ${allzips[@]:0:$n}"
+    rm -f ${allzips[@]:0:$n}
+  fi
+  if [ $c -gt 0 ]; then
+    [ "$quiet" = "0" ] && echo "removing ${allchangelogs[@]:0:$n}"
+    rm -f ${allchangelogs[@]:0:$n}
+  fi
+}
+
+function purgebranch {
+  local branch=$1
+  local folder=$2
+  if [ "${branch}" = "master" ]; then local branch=${masterrename}; fi
+  if [ -d "${outdir}/${branch}/${folder}" ]; then
+    if [ "$quiet" = "0" ]; then echo "deleting: ${branch}/${folder}"; fi
+      rm -rf "${outdir}/${branch}/${folder}"
+    if [ -z `ls -d ${outdir}/${branch}/*/ 2>/dev/null` ]; then rm -rf ${outdir}/${branch}/; fi
+  fi
+}
+
+function update {
+  local branch=$1
+  local prevtoprev=$2
+
+  if [ -n "$prevtoprev" ]; then prevtoprev="${prevtoprev}.."; fi
+
+  folders=()
+  for foldername in `git ls-tree -r --name-only origin/$branch | grep /${xmlfile} | cut -f1 -d'/'`; do
+    folders=( "${folders[@]}" "${foldername}" )
+  done
+
+  #Delete addon folders removed by latest commits
+  if [ "${regen}" != "1" ]; then
+    for i in $(git rev-list ${prevtoprev}origin/${branch}); do
+      for j in $(git diff-tree --name-only -r --diff-filter=D $i | grep /addon.xml); do
+        rm -rf ${outdir}/${branch}/$(dirname "${j}")
+      done
+    done
+  fi
+
+  for i in `git rev-list ${prevtoprev}origin/${branch}`; do
+    match="`git diff-tree --root --name-only --diff-filter=CRMA -r $i | grep /${xmlfile}`"
+    for j in ${match}; do
+      versionstring="`git show ${i}:${j} | xmlstarlet sel -t -m "/addon" -v "@id"`"
+      if [ -n "`git diff-tree --root -p $i -- "${j}" | grep +.*"${versionstring}"`" ]; then
+        addonname="`echo "${j}" | cut -f1 -d'/'`"
+        for (( k=0; k<${#folders[*]}; k++ )); do
+          if [ "${addonname}" = "${folders[k]}" ]; then
+            if [ "$quiet" = "0" ]; then echo -e "${branch} - ${folders[k]}" | sed "s/master/${masterrename}/"; fi
+            zipdir $branch "${folders[k]}" $i
+            folders[k]=""
+            if [ -z "`echo ${folders[*]}`" ]; then break 3; fi
+            break
+          fi
+        done
+      fi
+    done
+  done
+}
+
+prefetchbranches=()
+prefetchrefs=()
+#store branch refs before fetch so that we'll know what's changed
+for branch in `git show-ref | grep remote | grep -v HEAD | cut -f4 -d'/'`; do
+  prefetchbranches=( "${prefetchbranches[@]}" "${branch}" )
+  prefetchrefs=( "${prefetchrefs[@]}" "`git rev-list --max-count=1 origin/${branch}`" )
+done
+
+#git fetch -q --prune -- doesn't exist until git 1.6.6. have to use this instead:
+#git fetch -q
+#git remote prune origin > /dev/null
+git fetch -q --prune > /dev/null
+
+#search for branches deleted since last fetch
+deletebranch=()
+deleteref=()
+result=()
+for (( j=0; j<${#prefetchbranches[*]}; j++ )); do
+  if [ "${ignoremaster}" = "1" ] && [ "${j}" = "master" ]; then continue; fi
+  if [ -z $(git show-ref -s "origin/${prefetchbranches[$j]}") ]; then
+    if [ "$quiet" = "0" ]; then echo "deleted: ${prefetchbranches[$j]}" | sed "s/master/${masterrename}/"; fi
+    deletebranch=( "${deletebranch[@]}" "${prefetchbranches[$j]}" )
+    deleteref=( "${deleteref[@]}" "${prefetchrefs[$j]}" )
+    result=( "${result[@]}" "${prefetchbranches[$j]}" )
+  fi
+done
+
+#search for branches added or modified since last fetch
+addbranch=()
+changebranch=()
+for i in `git show-ref | grep remote | grep -v HEAD | cut -f4 -d'/'`; do
+  found=0
+  if [ "${ignoremaster}" = "1" ] && [ "${i}" = "master" ]; then continue; fi
+  for (( j=0; j<${#prefetchbranches[*]}; j++ )); do
+    if [ "${prefetchbranches[${j}]}" = "${i}" ]; then
+      found=1
+      break
+    fi
+  done
+  if [ "${found}" = "0" ] || [ "${regen}" = "1" ] ; then
+    addbranch=( "${addbranch[@]}" "${i}" )
+    result=( "${result[@]}" "${i}" )
+  else
+    if [ "${prefetchrefs[${j}]}" != "`git rev-list --max-count=1 "origin/${prefetchbranches[${j}]}" 2> /dev/null`" ]; then
+      changebranch=( "${changebranch[@]}" "${prefetchbranches[${j}]}" )
+      changebrancholdrev=( "${changebrancholdrev[@]}" "${prefetchrefs[${j}]}" )
+      result=( "${result[@]}" "${prefetchbranches[${j}]}" )
+    fi
+  fi
+done
+
+for (( l=0; l<${#addbranch[*]}; l++ )); do
+  update "${addbranch[${l}]}"
+done
+
+for (( l=0; l<${#changebranch[*]}; l++ )); do
+  update "${changebranch[$l]}" "${changebrancholdrev[$l]}"
+done
+
+for (( l=0; l<${#deletebranch[*]}; l++ )); do
+  for folder in `git ls-tree --name-only "${deleteref[$l]}"`; do
+    purgebranch "${deletebranch[$l]}" ${folder}
+  done
+done
+
+
+#echo result
+for (( l=0; l<${#result[*]}; l++ )); do
+  echo "${result[l]}"
+done
