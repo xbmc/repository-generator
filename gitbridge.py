@@ -153,9 +153,10 @@ def collect_artifacts(git_repos, refs):
                 addon_xml = directory['addon.xml'].data_stream.read()
                 tree = ET.fromstring(addon_xml)
                 artifacts.append(Artifact(
-                    directory.name,
-                    tree.attrib['version'], repo_path,
-                    ref + ":" + directory.name))
+                    directory.name.encode('utf-8'),
+                    tree.attrib['version'].encode('utf-8'),
+                    repo_path,
+                    ref + ":" + directory.name.encode('utf-8')))
 
     # Return only the latest version
     artifacts.sort(key=lambda _: _.addon_id)
