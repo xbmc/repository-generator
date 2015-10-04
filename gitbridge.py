@@ -173,7 +173,8 @@ def update_changed_artifacts(git_repos, refs, outdir):
 
     added = [a for a in artifacts if not os.path.exists(
         os.path.join(outdir, a.addon_id, "%s-%s.zip" % (a.addon_id, a.version)))]
-    removed = set(filter(os.path.isdir, os.listdir(outdir))) - set([_.addon_id for _ in artifacts])
+    current = set([name for name in os.listdir(outdir) if os.path.isdir(os.path.join(outdir, name))])
+    removed = current - set([_.addon_id for _ in artifacts])
 
     if len(added) == 0 and len(removed) == 0:
         logger.info("No changes")
