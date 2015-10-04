@@ -18,53 +18,88 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import logging
-import gitbridge
 import git
-from argparse import ArgumentParser
+import logging
+import shutil
+import gitbridge
+from io import BytesIO
 
-git_repos = [
+try:
+    from ConfigParser import ConfigParser
+except ImportError:
+    from configparser import ConfigParser
+from collections import namedtuple
+
+
+master_repo = "/home/git/addons-git/scripts"
+remote_name = "origin"
+config_branch = "master"
+config_file = "targets.cfg"
+fetch = True
+verbosity = logging.DEBUG
+outdir = "/var/www/downloads/addons"
+
+extra_repos = [
     "/home/git/addons-git/plugins",
-    "/home/git/addons-git/scripts",
-    "/home/git/addons-git/resources",
     "/home/git/addons-git/skins",
     "/home/git/addons-git/scrapers",
     "/home/git/addons-git/webinterfaces",
+    "/home/git/addons-git/resources",
 ]
 
-refs = [
-    "origin/gotham",
-    "origin/helix",
-    "origin/isengard",
-    "origin/jarvis",
-]
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=verbosity, format="%(levelname)s: %(message)s")
 
-remote = "origin"
-outdir = "/var/www/downloads/addons"
+Target = namedtuple('Target', ['name', 'branches', 'min_versions'])
 
-targets = [
-    (git_repos, refs[0:4], os.path.join(outdir, 'j')),
-]
 
-def main():
-    parser = ArgumentParser(description="", add_help=True)
-    parser.add_argument('-v', '--verbose', dest='verbose', action='store_true', default=False)
-    parser.add_argument('--no-fetch', dest='fetch', action='store_false', default=True,
-                        help="Don't fetch remotes before writing changes")
-    args = parser.parse_args()
+def read_targets():
+    """
+    Reads config file from master git repo and return the targets to generate
+    addon repository for.
+    """
+    config = ConfigParser({'branches': None, 'minversions': None})
+    ref = remote_name + '/' + config_branch
+    repo = git.Repo(master_repo)
+    # python 2 workaround
+    content = repo.refs[ref].commit.tree[config_file].data_stream.read()
+    config.readfp(BytesIO(content))
 
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
-            format="%(levelname)s: %(message)s")
+    for target in config.sections():
+        if '/' in target:
+            continue
+        branches = [b.strip(' \n\r') for b in config.get(target, 'branches').split(',')]
+        min_versions = []
+        if config.get(target, 'minversions'):
+            for version_string in config.get(target, 'minversions').split(','):
+                id_part, version_part = version_string.strip(' \n\r').split(':', 1)
+                min_versions.append((id_part.strip(' \n\r'), version_part.strip(' \n\r')))
+        yield Target(target, branches, min_versions)
 
-    if args.fetch:
-        for path in git_repos:
+
+def update_all_the_things():
+    if fetch:
+        for path in [master_repo] + extra_repos:
             repo = git.Repo(path)
-            repo.remotes[remote].fetch()
+            repo.remotes[remote_name].fetch()
 
-    for repos, refs, outdir, in targets:
-        gitbridge.update_changed_artifacts(repos, refs, outdir)
-        gitbridge.purge_old_artifacts(outdir, versions_to_keep=3)
+    current_targets = list(read_targets())
+
+    # Delete targets that have been removed since last update
+    previous_targets = [name for name in os.listdir(outdir) if name != '.git']
+    removed_targets = set(previous_targets) - set([t.name for t in current_targets])
+    for target in removed_targets:
+        logging.info("removing target '%s'", target)
+        shutil.rmtree(os.path.join(outdir, target))
+
+    for target in current_targets:
+        logging.info("Updating target '%s'", target.name)
+        refs = [remote_name + '/' + branch for branch in target.branches]
+        dest = os.path.join(outdir, target.name)
+        gitbridge.makedirs(dest)
+        gitbridge.update_changed_artifacts([master_repo] + extra_repos, refs, dest)
+        gitbridge.purge_old_artifacts(dest, 3)
 
 
 if __name__ == '__main__':
-    main()
+    update_all_the_things()
