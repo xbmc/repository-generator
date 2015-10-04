@@ -23,6 +23,7 @@ import logging
 import shutil
 import gitbridge
 from io import BytesIO
+from distutils.version import LooseVersion
 
 try:
     from ConfigParser import ConfigParser
@@ -69,11 +70,13 @@ def read_targets():
         if '/' in target:
             continue
         branches = [b.strip(' \n\r') for b in config.get(target, 'branches').split(',')]
-        min_versions = []
+        min_versions = {}
         if config.get(target, 'minversions'):
             for version_string in config.get(target, 'minversions').split(','):
                 id_part, version_part = version_string.strip(' \n\r').split(':', 1)
-                min_versions.append((id_part.strip(' \n\r'), version_part.strip(' \n\r')))
+                id_part = id_part.strip(' \n\r')
+                version_part = version_part.strip(' \n\r')
+                min_versions[id_part] = LooseVersion(version_part)
         yield Target(target, branches, min_versions)
 
 
@@ -97,7 +100,8 @@ def update_all_the_things():
         refs = [remote_name + '/' + branch for branch in target.branches]
         dest = os.path.join(outdir, target.name)
         gitbridge.makedirs(dest)
-        gitbridge.update_changed_artifacts([master_repo] + extra_repos, refs, dest)
+        gitbridge.update_changed_artifacts([master_repo] + extra_repos, refs,
+                target.min_versions, dest)
         gitbridge.purge_old_artifacts(dest, 3)
 
 

@@ -138,8 +138,15 @@ def purge_old_artifacts(outdir, versions_to_keep):
                 os.remove(changelog)
 
 
-def collect_artifacts(git_repos, refs):
-    artifacts = []
+def meets_version_requirements(imports, min_versions):
+    for addon_id, imported_version in imports:
+        if addon_id in min_versions:
+            if imported_version < min_versions[addon_id]:
+                return False
+    return True
+
+
+def collect_artifacts(git_repos, refs, min_versions):
     for repo_path in git_repos:
         repo = git.Repo(repo_path)
         if repo.bare:
@@ -152,13 +159,21 @@ def collect_artifacts(git_repos, refs):
             for directory in repo.refs[ref].commit.tree.trees:
                 addon_xml = directory['addon.xml'].data_stream.read()
                 tree = ET.fromstring(addon_xml)
-                artifacts.append(Artifact(
-                    directory.name.encode('utf-8'),
-                    tree.attrib['version'].encode('utf-8'),
-                    repo_path,
-                    ref + ":" + directory.name.encode('utf-8')))
+                artifact_id = directory.name.encode('utf-8')
 
-    # Return only the latest version
+                # check dependencies
+                imports = [(elem.attrib['addon'], LooseVersion(elem.attrib.get('version', '0.0.0')))
+                           for elem in tree.findall('./requires/import')]
+                if not meets_version_requirements(imports, min_versions):
+                    logging.debug("Skipping artifact %s unmet dependencies.", artifact_id)
+                    continue
+
+                yield Artifact(artifact_id, tree.attrib['version'].encode('utf-8'),
+                        repo_path, ref + ":" + directory.name.encode('utf-8'))
+
+
+def filter_latest_version(artifacts):
+    artifacts = list(artifacts)
     artifacts.sort(key=lambda _: _.addon_id)
     for addon_id, versions in groupby(artifacts, key=lambda _: _.addon_id):
         versions = list(versions)
@@ -168,8 +183,9 @@ def collect_artifacts(git_repos, refs):
         yield versions[0]
 
 
-def update_changed_artifacts(git_repos, refs, outdir):
-    artifacts = list(collect_artifacts(git_repos, refs))
+def update_changed_artifacts(git_repos, refs, min_versions, outdir):
+    artifacts = collect_artifacts(git_repos, refs, min_versions)
+    artifacts = list(filter_latest_version(artifacts))
 
     added = [a for a in artifacts if not os.path.exists(
         os.path.join(outdir, a.addon_id, "%s-%s.zip" % (a.addon_id, a.version)))]
