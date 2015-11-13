@@ -20,9 +20,7 @@
 import os
 import git
 import logging
-import shutil
-import gitbridge
-from io import BytesIO
+import gitutils
 from distutils.version import LooseVersion
 
 try:
@@ -80,7 +78,7 @@ def read_targets():
         yield Target(target, branches, min_versions)
 
 
-def update_all_the_things():
+def update_all_targets():
     if fetch:
         for path in [master_repo] + extra_repos:
             repo = git.Repo(path)
@@ -95,15 +93,19 @@ def update_all_the_things():
         logging.info("removing target '%s'", target)
         shutil.rmtree(os.path.join(outdir, target))
 
+    # Now update the active ones
     for target in current_targets:
-        logging.info("Updating target '%s'", target.name)
         refs = [remote_name + '/' + branch for branch in target.branches]
         dest = os.path.join(outdir, target.name)
-        gitbridge.makedirs(dest)
-        gitbridge.update_changed_artifacts([master_repo] + extra_repos, refs,
-                target.min_versions, dest)
-        gitbridge.purge_old_artifacts(dest, 3)
+        logging.info("Updating target '%r'. destination: %s", target, dest)
+        try:
+            os.makedirs(dest)
+        except OSError:
+            pass
+
+        gitutils.update_changed_artifacts([master_repo] + extra_repos, refs, target.min_versions, dest)
+        gitutils.delete_old_artifacts(dest, 3)
 
 
 if __name__ == '__main__':
-    update_all_the_things()
+    update_all_targets()
