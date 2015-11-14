@@ -18,10 +18,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import shutil
 import git
 import logging
 import gitutils
 from distutils.version import LooseVersion
+from io import BytesIO
 from xml_index import create_index
 
 try:
