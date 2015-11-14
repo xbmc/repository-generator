@@ -22,6 +22,7 @@ import git
 import logging
 import gitutils
 from distutils.version import LooseVersion
+from xml_index import create_index
 
 try:
     from ConfigParser import ConfigParser
@@ -105,6 +106,9 @@ def update_all_targets():
 
         gitutils.update_changed_artifacts([master_repo] + extra_repos, refs, target.min_versions, dest)
         gitutils.delete_old_artifacts(dest, 3)
+
+        # Create addons.xml
+        create_index(dest, os.path.join(dest, 'addons.xml'))
 
 
 if __name__ == '__main__':
