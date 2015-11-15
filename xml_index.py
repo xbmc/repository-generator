@@ -36,7 +36,7 @@ def find_archives(repo_dir):
                     for name in os.listdir(os.path.join(repo_dir, addon_id))
                     if os.path.splitext(name)[1] == '.zip' and '-' in name]
             if len(zips) > 0:
-                zips.sort(key=lambda _: LooseVersion(split_version(_)[0]), reverse=True)
+                zips.sort(key=lambda _: LooseVersion(split_version(_)[1]), reverse=True)
                 yield zips[0]
 
 
