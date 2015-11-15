@@ -21,6 +21,7 @@ import os
 import zipfile
 from lxml import etree as ET
 from xml.dom import minidom
+from argparse import ArgumentParser
 from distutils.version import LooseVersion
 
 
@@ -33,7 +34,7 @@ def find_archives(repo_dir):
         if os.path.isdir(os.path.join(repo_dir, addon_id)):
             zips = [os.path.join(repo_dir, addon_id, name)
                     for name in os.listdir(os.path.join(repo_dir, addon_id))
-                    if os.path.splitext(name)[1] == '.zip']
+                    if os.path.splitext(name)[1] == '.zip' and '-' in name]
             if len(zips) > 0:
                 zips.sort(key=lambda _: LooseVersion(split_version(_)[0]), reverse=True)
                 yield zips[0]
@@ -66,3 +67,12 @@ def create_index(repo_dir, dest, prettify=False):
 
     with open(dest, 'wb') as f:
         f.write(xml)
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('-i', '--input', dest='input', required=True, help="Path to the generated repository")
+    parser.add_argument('-o', '--output', dest='output', required=True)
+    parser.add_argument('-p', '--prettify', dest='prettify', action='store_true', default=False)
+    args = parser.parse_args()
+    create_index(args.input, args.output, prettify=args.prettify)
