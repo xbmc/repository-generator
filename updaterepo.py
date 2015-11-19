@@ -106,11 +106,10 @@ def update_all_targets():
         except OSError:
             pass
 
-        gitutils.update_changed_artifacts([master_repo] + extra_repos, refs, target.min_versions, dest)
-        gitutils.delete_old_artifacts(dest, 3)
-
-        # Create addons.xml
-        create_index(dest, os.path.join(dest, 'addons.xml'))
+        changed = gitutils.update_changed_artifacts([master_repo] + extra_repos, refs, target.min_versions, dest)
+        if changed:
+            gitutils.delete_old_artifacts(dest, 3)
+            create_index(dest, os.path.join(dest, 'addons.xml'))
 
 
 if __name__ == '__main__':

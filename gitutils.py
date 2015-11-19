@@ -119,6 +119,7 @@ def write_artifact(artifact, outdir):
 
 
 def update_changed_artifacts(git_repos, refs, min_versions, outdir):
+    """ Returns true if there are any new/deleted artifacts, otherwise false. """
     artifacts = collect_artifacts(git_repos, refs, min_versions)
     artifacts = list(filter_latest_version(artifacts))
 
@@ -129,7 +130,7 @@ def update_changed_artifacts(git_repos, refs, min_versions, outdir):
 
     if len(added) == 0 and len(removed) == 0:
         logger.info("No changes")
-        return
+        return False
 
     for artifact in added:
         dest = os.path.join(outdir, artifact.addon_id)
@@ -140,3 +141,5 @@ def update_changed_artifacts(git_repos, refs, min_versions, outdir):
     for artifact_id in removed:
         shutil.rmtree(os.path.join(outdir, artifact_id))
         logger.info("Removed  artifact '%s'", artifact_id)
+
+    return True
