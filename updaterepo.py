@@ -90,7 +90,7 @@ def update_all_targets():
     current_targets = list(read_targets())
 
     # Delete targets that have been removed since last update
-    previous_targets = [name for name in os.listdir(outdir) if name != '.git']
+    previous_targets = [name for name in os.listdir(outdir) if not name.startswith('.')]
     removed_targets = set(previous_targets) - set([t.name for t in current_targets])
     for target in removed_targets:
         logging.info("removing target '%s'", target)
