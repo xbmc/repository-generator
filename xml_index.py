@@ -18,6 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import gzip
 import zipfile
 from lxml import etree as ET
 from xml.dom import minidom
@@ -66,6 +67,9 @@ def create_index(repo_dir, dest, prettify=False):
         xml = minidom.parseString(xml).toprettyxml(encoding='utf-8', indent="  ")
 
     with open(dest, 'wb') as f:
+        f.write(xml)
+
+    with gzip.open(dest + ".gz", 'wb', 9) as f:
         f.write(xml)
 
 
