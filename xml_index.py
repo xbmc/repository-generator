@@ -45,7 +45,10 @@ def create_index(repo_dir, dest, prettify=False):
     parser = ET.XMLParser(remove_blank_text=True)
     addons = ET.Element('addons')
 
-    for archive in find_archives(repo_dir):
+    archives = list(find_archives(repo_dir))
+    archives.sort(key=lambda _: os.stat(_).st_mtime, reverse=True)
+
+    for archive in archives:
         addon_id, version = split_version(archive)
         with zipfile.ZipFile(archive, 'r') as zf:
             addonxml = zf.read(os.path.join(addon_id, 'addon.xml'))
