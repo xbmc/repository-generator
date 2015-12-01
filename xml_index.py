@@ -72,7 +72,7 @@ def create_index(repo_dir, dest, prettify=False):
     with open(dest, 'wb') as f:
         f.write(xml)
 
-    with gzip.open(dest + ".gz", 'wb', 9) as f:
+    with gzip.GzipFile(dest + ".gz", 'wb', compresslevel=9, mtime=0) as f:
         f.write(xml)
 
 
