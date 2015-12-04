@@ -106,6 +106,7 @@ def update_all_targets():
             pass
 
         gitutils.update_changed_artifacts([master_repo] + extra_repos, refs, target.min_versions, dest)
+        gitutils.delete_old_artifacts(dest, 3)
 
 
 if __name__ == '__main__':
