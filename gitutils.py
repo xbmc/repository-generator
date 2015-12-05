@@ -84,12 +84,15 @@ def filter_latest_version(artifacts):
         yield versions[0]
 
 
-def delete_old_artifacts(artifact_dir, versions_to_keep):
-    for artifact_id in os.listdir(artifact_dir):
-        artifact_dir = os.path.join(artifact_dir, artifact_id)
+def delete_old_artifacts(target_dir, versions_to_keep):
+    for artifact_id in os.listdir(target_dir):
+        artifact_dir = os.path.join(target_dir, artifact_id)
+        if not os.path.isdir(artifact_dir):
+            continue
+
         zips = [name for name in os.listdir(artifact_dir) if os.path.splitext(name)[1] == '.zip']
         if len(zips) <= versions_to_keep:
-            return
+            continue
 
         version_from_name = lambda name: os.path.splitext(name)[0].rsplit('-', 1)[1]
         zips.sort(key=lambda _: LooseVersion(version_from_name(_)), reverse=True)
