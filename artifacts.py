@@ -41,7 +41,7 @@ def pack_textures(working_dir):
         if os.path.exists(os.path.join(working_dir, 'themes')):
             for theme_name in os.listdir(os.path.join(working_dir, 'themes')):
                 invoke_texturepacker(os.path.join(working_dir, 'themes', theme_name),
-                        os.path.join(working_dir, 'themes', theme_name + '.xbt'))
+                        os.path.join(working_dir, 'media', theme_name + '.xbt'))
 
         _remove_non_xbt_files(os.path.join(working_dir, 'media'))
         _remove_non_xbt_files(os.path.join(working_dir, 'themes'))
