@@ -51,11 +51,11 @@ def collect_artifacts(git_repos, refs, min_versions):
     for repo_path in git_repos:
         repo = git.Repo(repo_path)
         if repo.bare:
-            logger.warn("Repo '%s' is bare, Skipping", repo_path)
+            logger.warning("Repo %s is bare, Skipping", repo_path)
             continue
         for ref in refs:
             if ref not in repo.refs:
-                logger.warn("No such ref '%s' in repo '%s'. Skipping.", ref, repo_path)
+                logger.warning("No such ref %s in repo %s. Skipping.", ref, repo_path)
                 continue
             for directory in repo.refs[ref].commit.tree.trees:
                 addon_xml = directory['addon.xml'].data_stream.read()
@@ -66,7 +66,6 @@ def collect_artifacts(git_repos, refs, min_versions):
                 imports = [(elem.attrib['addon'], LooseVersion(elem.attrib.get('version', '0.0.0')))
                            for elem in tree.findall('./requires/import')]
                 if not meets_version_requirements(imports, min_versions):
-                    logging.debug("Skipping artifact %s unmet dependencies.", artifact_id)
                     continue
 
                 yield Artifact(artifact_id, tree.attrib['version'].encode('utf-8'),
@@ -80,7 +79,7 @@ def filter_latest_version(artifacts):
         versions = list(versions)
         versions.sort(key=lambda _: LooseVersion(_.version), reverse=True)
         if len(versions) >= 2 and versions[0].version == versions[1].version:
-            logger.warn("Duplicate artifact. I will pick one at random. First: %r. Second: %r", versions[0], versions[1])
+            logger.warning("Duplicate artifact. I will pick one at random. First: %r. Second: %r", versions[0], versions[1])
         yield versions[0]
 
 
@@ -98,7 +97,7 @@ def delete_old_artifacts(target_dir, versions_to_keep):
         zips.sort(key=lambda _: LooseVersion(version_from_name(_)), reverse=True)
 
         for filename in zips[versions_to_keep:]:
-            logger.info("Removing old artifact '%s'", filename)
+            logger.debug("Removing old artifact %s", filename)
             os.remove(os.path.join(artifact_dir, filename))
 
             changelog = os.path.join(artifact_dir, 'changelog-%s.txt' % version_from_name(filename))
@@ -122,7 +121,7 @@ def write_artifact(artifact, outdir):
 
 
 def update_changed_artifacts(git_repos, refs, min_versions, outdir):
-    """ Returns true if there are any new/deleted artifacts, otherwise false. """
+    """ Returns a tuple with number of new and deleted artifacts. """
     artifacts = collect_artifacts(git_repos, refs, min_versions)
     artifacts = list(filter_latest_version(artifacts))
 
@@ -131,18 +130,14 @@ def update_changed_artifacts(git_repos, refs, min_versions, outdir):
     current = set([name for name in os.listdir(outdir) if os.path.isdir(os.path.join(outdir, name))])
     removed = current - set([_.addon_id for _ in artifacts])
 
-    if len(added) == 0 and len(removed) == 0:
-        logger.info("No changes")
-        return False
-
     for artifact in added:
+        logger.debug("New artifact %s version %s", artifact.addon_id, artifact.version)
         dest = os.path.join(outdir, artifact.addon_id)
         makedirs(dest)
         write_artifact(artifact, dest)
-        logger.info("Added artifact '%s' version %s", artifact.addon_id, artifact.version)
 
     for artifact_id in removed:
+        logger.debug("Removing artifact %s", artifact_id)
         shutil.rmtree(os.path.join(outdir, artifact_id))
-        logger.info("Removed  artifact '%s'", artifact_id)
 
-    return True
+    return len(added), len(removed)

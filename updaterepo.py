@@ -48,8 +48,9 @@ extra_repos = [
     "/home/git/addons-git/resources",
 ]
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=verbosity, format="%(levelname)s: %(message)s")
+logger = logging.getLogger("updaterepo")
+logging.basicConfig(level=verbosity, format='%(levelname)s [%(name)s] %(message)s')
+
 
 Target = namedtuple('Target', ['name', 'branches', 'min_versions'])
 
@@ -92,21 +93,28 @@ def update_all_targets():
     previous_targets = [name for name in os.listdir(outdir) if not name.startswith('.')]
     removed_targets = set(previous_targets) - set([t.name for t in current_targets])
     for target in removed_targets:
-        logging.info("removing target '%s'", target)
+        logger.debug("Deleting unknown target %s", target)
         shutil.rmtree(os.path.join(outdir, target))
 
     # Now update the active ones
     for target in current_targets:
         refs = [remote_name + '/' + branch for branch in target.branches]
         dest = os.path.join(outdir, target.name)
-        logging.info("Updating target '%r'. destination: %s", target, dest)
+        logger.debug("============================ %s ============================", target.name)
+        logger.debug("Branches: %s", target.branches)
+        logger.debug("Min. versions: %s", target.min_versions)
+        logger.debug("Destination: %s", dest)
         try:
             os.makedirs(dest)
         except OSError:
             pass
 
-        gitutils.update_changed_artifacts([master_repo] + extra_repos, refs, target.min_versions, dest)
-        gitutils.delete_old_artifacts(dest, 3)
+        added, removed = gitutils.update_changed_artifacts([master_repo] + extra_repos, refs, target.min_versions, dest)
+        logger.debug("Results: %d artifacts added, %d artifacts removed", added, removed)
+
+        version_to_keep = 3
+        logger.debug("Purging old artifact version... To keep: %d", version_to_keep)
+        gitutils.delete_old_artifacts(dest, version_to_keep)
 
 
 if __name__ == '__main__':

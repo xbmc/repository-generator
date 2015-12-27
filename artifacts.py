@@ -62,7 +62,7 @@ def _remove_non_xbt_files(directory):
 
 
 def invoke_texturepacker(input, output):
-    logger.debug("Running texturepacker on %s", input)
+    logger.debug("Running texturepacker on %s ...", input)
     cmd = ['TexturePacker', '-dupecheck', '-input', input, '-output', output]
     with open(os.devnull, 'w') as f:
         subprocess.check_call(cmd, stdout=f, stderr=f)
