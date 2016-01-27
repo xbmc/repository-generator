@@ -68,6 +68,10 @@ def create_index(repo_dir, dest, prettify=False):
                 if os.path.join(addon_id, no_thing) not in zf.namelist():
                     elem = ET.SubElement(metadata_elem, 'no' + os.path.splitext(no_thing)[0])
                     elem.text = "true"
+
+            elem = ET.SubElement(metadata_elem, 'size')
+            elem.text = str(os.path.getsize(archive))
+
             addons.append(tree)
 
     xml = ET.tostring(addons, encoding='utf-8', xml_declaration=True)
