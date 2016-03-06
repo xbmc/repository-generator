@@ -20,6 +20,7 @@
 import os
 import shutil
 import git
+import sys
 import logging
 import gitutils
 from distutils.version import LooseVersion
@@ -32,48 +33,43 @@ except ImportError:
 from collections import namedtuple
 
 
-master_repo = "/home/git/addons-git/scripts"
-remote_name = "origin"
-config_branch = "master"
-config_file = "targets.cfg"
-fetch = True
-verbosity = logging.DEBUG
-outdir = "/var/www/downloads/addons"
+Target = namedtuple('Target', ['name', 'branches', 'min_versions'])
 
-extra_repos = [
-    "/home/git/addons-git/plugins",
-    "/home/git/addons-git/skins",
-    "/home/git/addons-git/scrapers",
-    "/home/git/addons-git/webinterfaces",
-    "/home/git/addons-git/resources",
-]
+
+config = ConfigParser()
+if not config.read('config.cfg'):
+    print("Fatal: Could not read config file.")
+    sys.exit(1)
 
 logger = logging.getLogger("updaterepo")
-logging.basicConfig(level=verbosity, format='%(levelname)s [%(name)s] %(message)s')
-
-
-Target = namedtuple('Target', ['name', 'branches', 'min_versions'])
+logging.basicConfig(level=config.getint('debug', 'level'), format='%(levelname)s [%(name)s] %(message)s')
 
 
 def read_targets():
     """
-    Reads config file from master git repo and return the targets to generate
+    Reads config file from the remove git configuration repo and returns the targets to generate
     addon repository for.
     """
-    config = ConfigParser({'branches': None, 'minversions': None})
-    ref = remote_name + '/' + config_branch
-    repo = git.Repo(master_repo)
-    # python 2 workaround
-    content = repo.refs[ref].commit.tree[config_file].data_stream.read()
-    config.readfp(BytesIO(content))
+    repo = git.Repo(config.get('configuration_repo', 'location'))
+    remote_name = config.get('configuration_repo', 'remote_name')
+    ref = remote_name + '/' + config.get('configuration_repo', 'branch')
+    filename = config.get('configuration_repo', 'filename')
 
-    for target in config.sections():
+    if config.getboolean('debug', 'fetch_remotes'):
+        repo.remotes[remote_name].fetch()
+
+    # python 2 workaround
+    content = repo.refs[ref].commit.tree[filename].data_stream.read()
+    target_config = ConfigParser({'branches': None, 'minversions': None})
+    target_config.readfp(BytesIO(content))
+
+    for target in target_config.sections():
         if '/' in target:
             continue
-        branches = [b.strip(' \n\r') for b in config.get(target, 'branches').split(',')]
+        branches = [b.strip(' \n\r') for b in target_config.get(target, 'branches').split(',')]
         min_versions = {}
-        if config.get(target, 'minversions'):
-            for version_string in config.get(target, 'minversions').split(','):
+        if target_config.get(target, 'minversions'):
+            for version_string in target_config.get(target, 'minversions').split(','):
                 id_part, version_part = version_string.strip(' \n\r').split(':', 1)
                 id_part = id_part.strip(' \n\r')
                 version_part = version_part.strip(' \n\r')
@@ -82,10 +78,18 @@ def read_targets():
 
 
 def update_all_targets():
-    if fetch:
-        for path in [master_repo] + extra_repos:
-            repo = git.Repo(path)
-            repo.remotes[remote_name].fetch()
+    remote_name = config.get('source_repo', 'remote_name')
+    outdir = config.get('general', 'destination')
+    version_to_keep = config.getint('general', 'version_to_keep')
+    source_locations = config.get('source_repo', 'locations').replace('\n', '').split(',')
+
+    if not outdir:
+        logger.fatal("No destination specified.")
+        return
+
+    if config.getboolean('debug', 'fetch_remotes'):
+        for path in source_locations:
+            git.Repo(path).remotes[remote_name].fetch()
 
     current_targets = list(read_targets())
 
@@ -109,10 +113,9 @@ def update_all_targets():
         except OSError:
             pass
 
-        added, removed = gitutils.update_changed_artifacts([master_repo] + extra_repos, refs, target.min_versions, dest)
+        added, removed = gitutils.update_changed_artifacts(source_locations, refs, target.min_versions, dest)
         logger.debug("Results: %d artifacts added, %d artifacts removed", added, removed)
 
-        version_to_keep = 3
         logger.debug("Purging old artifact version... To keep: %d", version_to_keep)
         gitutils.delete_old_artifacts(dest, version_to_keep)
 

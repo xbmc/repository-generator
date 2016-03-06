@@ -18,11 +18,21 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import sys
 from xml_index import create_index
-from updaterepo import outdir
+try:
+    from ConfigParser import ConfigParser
+except ImportError:
+    from configparser import ConfigParser
+
+config = ConfigParser()
+if not config.read('config.cfg'):
+    print("Fatal: Could not read config file.")
+    sys.exit(1)
 
 
 if __name__ == '__main__':
+    outdir = config.get('general', 'destination')
     for target_name in os.listdir(outdir):
         target_path = os.path.join(outdir, target_name)
         if os.path.isdir(target_path):
