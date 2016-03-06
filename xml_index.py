@@ -19,6 +19,7 @@
 
 import os
 import gzip
+import logging
 import zipfile
 from lxml import etree as ET
 from xml.dom import minidom
@@ -51,8 +52,12 @@ def create_index(repo_dir, dest, prettify=False):
     for archive in archives:
         addon_id, version = split_version(archive)
         with zipfile.ZipFile(archive, 'r') as zf:
-            addonxml = zf.read(os.path.join(addon_id, 'addon.xml'))
-            tree = ET.fromstring(addonxml, parser)
+            tree = None
+            try:
+                tree = ET.fromstring(zf.read(os.path.join(addon_id, 'addon.xml')), parser)
+            except (ET.ParseError, KeyError, IndexError) as e:
+                logging.exception("Failed to read addon info from '%s'. Skipping" % archive)
+                continue
 
             metadata_elem = tree.find("./extension[@point='kodi.addon.metadata']")
             if metadata_elem is None:
