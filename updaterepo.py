@@ -37,12 +37,7 @@ Target = namedtuple('Target', ['name', 'branches', 'min_versions'])
 
 
 config = ConfigParser()
-if not config.read('config.cfg'):
-    print("Fatal: Could not read config file.")
-    sys.exit(1)
-
 logger = logging.getLogger("updaterepo")
-logging.basicConfig(level=config.getint('debug', 'level'), format='%(levelname)s [%(name)s] %(message)s')
 
 
 def read_targets():
@@ -120,5 +115,14 @@ def update_all_targets():
         gitutils.delete_old_artifacts(dest, version_to_keep)
 
 
-if __name__ == '__main__':
+def main():
+    filename = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), 'config.cfg')
+    if not config.read(filename):
+        print("Fatal: Could not read config file '%s'" % filename)
+        sys.exit(1)
+
+    logging.basicConfig(level=config.getint('debug', 'level'), format='%(levelname)s [%(name)s] %(message)s')
     update_all_targets()
+
+if __name__ == '__main__':
+    main()
