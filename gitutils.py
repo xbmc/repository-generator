@@ -106,7 +106,7 @@ def delete_old_artifacts(target_dir, versions_to_keep):
 
 
 def write_artifact(artifact, outdir):
-    """ Reads artifact data from git and writes a zip file (and companion file) to `outdir` """
+    """ Reads artifact data from git and writes a zip file (and companion files) to `outdir` """
     working_dir = tempfile.mkdtemp()
     repo = git.Repo(artifact.git_repo)
 
@@ -134,6 +134,7 @@ def update_changed_artifacts(git_repos, refs, min_versions, outdir):
         logger.debug("New artifact %s version %s", artifact.addon_id, artifact.version)
         dest = os.path.join(outdir, artifact.addon_id)
         makedirs(dest)
+        delete_companion_files(dest)
         write_artifact(artifact, dest)
 
     for artifact_id in removed:
@@ -141,3 +142,16 @@ def update_changed_artifacts(git_repos, refs, min_versions, outdir):
         shutil.rmtree(os.path.join(outdir, artifact_id))
 
     return len(added), len(removed)
+
+
+def delete_companion_files(path):
+    for name in os.listdir(path):
+        if os.path.splitext(name) != '.zip':
+            try:
+                if os.path.isdir(os.path.join(path, name)):
+                    shutil.rmtree(os.path.join(path, name))
+                else:
+                    os.remove(os.path.join(path, name))
+            except (IOError, OSError) as ex:
+                logger.warning("Failed to remove companion file '%s'" % os.path.join(path, name))
+                logger.exception(ex)
