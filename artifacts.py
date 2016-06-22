@@ -29,10 +29,9 @@ logger = logging.getLogger(__name__)
 Artifact = namedtuple('Artifact', ['addon_id', 'version', 'git_repo', 'treeish'])
 
 
-def pack_textures(working_dir):
-    tree = ET.parse(os.path.join(working_dir, 'addon.xml'))
-    is_skin = tree.find("./extension[@point='xbmc.gui.skin']") is not None
-    compile = tree.find("./extension[@compile='true']") is not None
+def pack_textures(xml, working_dir):
+    is_skin = xml.find("./extension[@point='xbmc.gui.skin']") is not None
+    compile = xml.find("./extension[@compile='true']") is not None
 
     if is_skin:
         invoke_texturepacker(os.path.join(working_dir, 'media'),
@@ -69,8 +68,9 @@ def invoke_texturepacker(input, output):
 
 
 def pack_artifact(artifact, src_dir, dst_dir):
-    pack_textures(src_dir)
+    xml = ET.parse(os.path.join(src_dir, 'addon.xml'))
 
+    pack_textures(xml, src_dir)
     try:
         shutil.rmtree(os.path.join(src_dir, '_screenshots'))
     except OSError:
@@ -85,12 +85,25 @@ def pack_artifact(artifact, src_dir, dst_dir):
                 archive_dest = artifact.addon_id + '/' + os.path.relpath(local_path, start=src_dir)
                 zf.write(local_path, archive_dest)
 
-    # Copy extra files
-    if os.path.exists(os.path.join(src_dir, "icon.png")):
-        shutil.copyfile(os.path.join(src_dir, "icon.png"), os.path.join(dst_dir, "icon.png"))
+    # Copy asset files
+    assets = xml.find("./extension[@point='kodi.addon.metadata']/assets")
+    if assets is None:
+        assets = xml.find("./extension[@point='xbmc.addon.metadata']/assets")
 
-    if os.path.exists(os.path.join(src_dir, "fanart.jpg")):
-        shutil.copyfile(os.path.join(src_dir, "fanart.jpg"), os.path.join(dst_dir, "fanart.jpg"))
+    if assets is not None:
+        for item in assets:
+            if item.text:
+                try:
+                    os.makedirs(os.path.join(dst_dir, os.path.dirname(item.text)))
+                except OSError:
+                    pass
+                shutil.copyfile(os.path.join(src_dir, item.text), os.path.join(dst_dir, item.text))
+    else:  # for backwards compatibility with add-ons that do not use the assets element
+        if os.path.exists(os.path.join(src_dir, "icon.png")):
+            shutil.copyfile(os.path.join(src_dir, "icon.png"), os.path.join(dst_dir, "icon.png"))
 
-    if os.path.exists(os.path.join(src_dir, "changelog.txt")):
-        shutil.copyfile(os.path.join(src_dir, "changelog.txt"), os.path.join(dst_dir, "changelog-%s.txt" % artifact.version))
+        if os.path.exists(os.path.join(src_dir, "fanart.jpg")):
+            shutil.copyfile(os.path.join(src_dir, "fanart.jpg"), os.path.join(dst_dir, "fanart.jpg"))
+
+        if os.path.exists(os.path.join(src_dir, "changelog.txt")):
+            shutil.copyfile(os.path.join(src_dir, "changelog.txt"), os.path.join(dst_dir, "changelog-%s.txt" % artifact.version))

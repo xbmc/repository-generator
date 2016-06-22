@@ -63,11 +63,13 @@ def create_index(repo_dir, dest, prettify=False):
             if metadata_elem is None:
                 metadata_elem = tree.find("./extension[@point='xbmc.addon.metadata']")
 
-            no_things = ['icon.png', 'fanart.jpg', 'changelog.txt']
-            for no_thing in no_things:
-                if os.path.join(addon_id, no_thing) not in zf.namelist():
-                    elem = ET.SubElement(metadata_elem, 'no' + os.path.splitext(no_thing)[0])
-                    elem.text = "true"
+            # for backwards compatibility with add-ons that do not use the assets element
+            if metadata_elem.find('./assets') is None:
+                no_things = ['icon.png', 'fanart.jpg', 'changelog.txt']
+                for no_thing in no_things:
+                    if os.path.join(addon_id, no_thing) not in zf.namelist():
+                        elem = ET.SubElement(metadata_elem, 'no' + os.path.splitext(no_thing)[0])
+                        elem.text = "true"
 
             elem = ET.SubElement(metadata_elem, 'size')
             elem.text = str(os.path.getsize(archive))
