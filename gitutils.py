@@ -127,7 +127,8 @@ def update_changed_artifacts(git_repos, refs, min_versions, outdir):
 
     added = [a for a in artifacts if not os.path.exists(
         os.path.join(outdir, a.addon_id, "%s-%s.zip" % (a.addon_id, a.version)))]
-    current = set([name for name in os.listdir(outdir) if os.path.isdir(os.path.join(outdir, name))])
+    current = set([name for name in os.listdir(outdir)
+                   if os.path.isdir(os.path.join(outdir, name)) and not name.startswith('.')])
     removed = current - set([_.addon_id for _ in artifacts])
 
     for artifact in added:
