@@ -100,6 +100,7 @@ def delete_old_artifacts(target_dir, versions_to_keep):
             logger.debug("Removing old artifact %s", filename)
             os.remove(os.path.join(artifact_dir, filename))
 
+            # TODO: remove after krypton
             changelog = os.path.join(artifact_dir, 'changelog-%s.txt' % version_from_name(filename))
             if os.path.exists(changelog):
                 os.remove(changelog)
@@ -147,6 +148,10 @@ def update_changed_artifacts(git_repos, refs, min_versions, outdir):
 
 def delete_companion_files(path):
     for name in os.listdir(path):
+        # TODO: remove after krypton
+        if name.startswith("changelog-") and name.endswith(".txt"):
+            continue
+
         if os.path.splitext(name)[1] != '.zip':
             try:
                 if os.path.isdir(os.path.join(path, name)):
