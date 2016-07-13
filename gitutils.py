@@ -147,7 +147,7 @@ def update_changed_artifacts(git_repos, refs, min_versions, outdir):
 
 def delete_companion_files(path):
     for name in os.listdir(path):
-        if os.path.splitext(name) != '.zip':
+        if os.path.splitext(name)[1] != '.zip':
             try:
                 if os.path.isdir(os.path.join(path, name)):
                     shutil.rmtree(os.path.join(path, name))
