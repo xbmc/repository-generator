@@ -108,17 +108,16 @@ def delete_old_artifacts(target_dir, versions_to_keep):
 
 def write_artifact(artifact, outdir):
     """ Reads artifact data from git and writes a zip file (and companion files) to `outdir` """
-    working_dir = tempfile.mkdtemp()
     repo = git.Repo(artifact.git_repo)
-
-    # Extract files to working_dir
-    buffer = BytesIO()
-    repo.archive(buffer, artifact.treeish, format="zip")
-    with zipfile.ZipFile(buffer, 'r') as zf:
-        zf.extractall(working_dir)
-
-    pack_artifact(artifact, working_dir, outdir)
-    shutil.rmtree(working_dir)
+    working_dir = tempfile.mkdtemp()
+    try:
+        buffer = BytesIO()
+        repo.archive(buffer, artifact.treeish, format="zip")
+        with zipfile.ZipFile(buffer, 'r') as zf:
+            zf.extractall(working_dir)
+        pack_artifact(artifact, working_dir, outdir)
+    finally:
+        shutil.rmtree(working_dir, ignore_errors=True)
 
 
 def update_changed_artifacts(git_repos, refs, min_versions, outdir):
