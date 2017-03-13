@@ -71,10 +71,6 @@ def pack_artifact(artifact, src_dir, dst_dir):
     xml = ET.parse(os.path.join(src_dir, 'addon.xml'))
 
     pack_textures(xml, src_dir)
-    try:
-        shutil.rmtree(os.path.join(src_dir, '_screenshots'))
-    except OSError:
-        pass
 
     # Write and compress files in working_dir to the final zip file
     dest_file = os.path.join(dst_dir, "%s-%s.zip" % (artifact.addon_id, artifact.version))
