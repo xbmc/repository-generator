@@ -79,6 +79,8 @@ def write_artifact(artifact, outdir):
         with zipfile.ZipFile(buffer, 'r') as zf:
             zf.extractall(working_dir)
         pack_artifact(artifact, working_dir, outdir)
+    except Exception as ex:
+        logger.error("Failed package %s:", artifact, exc_info=1)
     finally:
         shutil.rmtree(working_dir, ignore_errors=True)
 
