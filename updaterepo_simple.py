@@ -15,12 +15,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import os
 import sys
 import hashlib
 import logging
-import gitutils
-from xml_index import create_index
+from indexer.indexer import create_index
+import packager
 
 logger = logging.getLogger("updaterepo")
 
@@ -30,11 +31,11 @@ def main():
     source = sys.argv[1]
     outdir = sys.argv[2]
 
-    added, removed = gitutils.update_changed_artifacts([source], ['master'], [], outdir)
+    added, removed = packager.update_changed_artifacts([source], ['master'], [], outdir)
     logger.debug("Results: %d artifacts added, %d artifacts removed", added, removed)
 
     if added or removed:
-        gitutils.delete_old_artifacts(outdir, 1)
+        packager.delete_old_artifacts(outdir, 1)
 
         create_index(outdir, os.path.join(outdir, "addons.xml"))
         md5sum = hashlib.md5()

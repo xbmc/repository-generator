@@ -19,52 +19,23 @@
 import os
 import logging
 import shutil
-import subprocess
 import zipfile
 from collections import namedtuple
+from distutils.version import LooseVersion
 from xml.etree import ElementTree as ET
+from packager.textures import pack_textures
 
 logger = logging.getLogger(__name__)
 
 Artifact = namedtuple('Artifact', ['addon_id', 'version', 'git_repo', 'treeish'])
 
 
-def pack_textures(xml, working_dir):
-    is_skin = xml.find("./extension[@point='xbmc.gui.skin']") is not None
-    compile = xml.find("./extension[@compile='true']") is not None
-
-    if is_skin:
-        invoke_texturepacker(os.path.join(working_dir, 'media'),
-                os.path.join(working_dir, 'media', 'Textures.xbt'))
-
-        if os.path.exists(os.path.join(working_dir, 'themes')):
-            for theme_name in os.listdir(os.path.join(working_dir, 'themes')):
-                invoke_texturepacker(os.path.join(working_dir, 'themes', theme_name),
-                        os.path.join(working_dir, 'media', theme_name + '.xbt'))
-
-        _remove_non_xbt_files(os.path.join(working_dir, 'media'))
-        _remove_non_xbt_files(os.path.join(working_dir, 'themes'))
-
-    if compile:
-        invoke_texturepacker(os.path.join(working_dir, 'resources'),
-                os.path.join(working_dir, 'resources', 'Textures.xbt'))
-        _remove_non_xbt_files(os.path.join(working_dir, 'resources'))
-
-
-def _remove_non_xbt_files(directory):
-    for root, dirs, files in os.walk(directory, topdown=False):
-        for name in files:
-            if not name.endswith(".xbt"):
-                os.remove(os.path.join(root, name))
-        for name in dirs:
-            os.rmdir(os.path.join(root, name))
-
-
-def invoke_texturepacker(input, output):
-    logger.debug("Running texturepacker on %s ...", input)
-    cmd = ['TexturePacker', '-dupecheck', '-input', input, '-output', output]
-    with open(os.devnull, 'w') as f:
-        subprocess.check_call(cmd, stdout=f, stderr=f)
+def meets_version_requirements(imports, min_versions):
+    for addon_id, imported_version in imports:
+        if addon_id in min_versions:
+            if imported_version < min_versions[addon_id]:
+                return False
+    return True
 
 
 def pack_artifact(artifact, src_dir, dst_dir):
@@ -103,3 +74,43 @@ def pack_artifact(artifact, src_dir, dst_dir):
 
         if os.path.exists(os.path.join(src_dir, "changelog.txt")):
             shutil.copyfile(os.path.join(src_dir, "changelog.txt"), os.path.join(dst_dir, "changelog-%s.txt" % artifact.version))
+
+
+def delete_companion_files(path):
+    for name in os.listdir(path):
+        # TODO: remove after krypton
+        if name.startswith("changelog-") and name.endswith(".txt"):
+            continue
+
+        if os.path.splitext(name)[1] != '.zip':
+            try:
+                if os.path.isdir(os.path.join(path, name)):
+                    shutil.rmtree(os.path.join(path, name))
+                else:
+                    os.remove(os.path.join(path, name))
+            except (IOError, OSError) as ex:
+                logger.warning("Failed to remove companion file '%s'" % os.path.join(path, name))
+                logger.exception(ex)
+
+
+def delete_old_artifacts(target_dir, versions_to_keep):
+    for artifact_id in os.listdir(target_dir):
+        artifact_dir = os.path.join(target_dir, artifact_id)
+        if not os.path.isdir(artifact_dir):
+            continue
+
+        zips = [name for name in os.listdir(artifact_dir) if os.path.splitext(name)[1] == '.zip']
+        if len(zips) <= versions_to_keep:
+            continue
+
+        version_from_name = lambda name: os.path.splitext(name)[0].rsplit('-', 1)[1]
+        zips.sort(key=lambda _: LooseVersion(version_from_name(_)), reverse=True)
+
+        for filename in zips[versions_to_keep:]:
+            logger.debug("Removing old artifact %s", filename)
+            os.remove(os.path.join(artifact_dir, filename))
+
+            # TODO: remove after krypton
+            changelog = os.path.join(artifact_dir, 'changelog-%s.txt' % version_from_name(filename))
+            if os.path.exists(changelog):
+                os.remove(changelog)

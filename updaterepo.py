@@ -22,7 +22,7 @@ import shutil
 import git
 import sys
 import logging
-import gitutils
+import packager
 from distutils.version import LooseVersion
 from io import BytesIO
 
@@ -108,11 +108,11 @@ def update_all_targets():
         except OSError:
             pass
 
-        added, removed = gitutils.update_changed_artifacts(source_locations, refs, target.min_versions, dest)
+        added, removed = packager.update_changed_artifacts(source_locations, refs, target.min_versions, dest)
         logger.debug("Results: %d artifacts added, %d artifacts removed", added, removed)
 
         logger.debug("Purging old artifact version... To keep: %d", version_to_keep)
-        gitutils.delete_old_artifacts(dest, version_to_keep)
+        packager.delete_old_artifacts(dest, version_to_keep)
 
 
 def main():

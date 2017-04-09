@@ -17,23 +17,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
-import sys
-from indexer import indexer
-try:
-    from ConfigParser import ConfigParser
-except ImportError:
-    from configparser import ConfigParser
-
-config = ConfigParser()
-if not config.read('config.cfg'):
-    print("Fatal: Could not read config file.")
-    sys.exit(1)
-
+from argparse import ArgumentParser
+from .indexer import create_index
 
 if __name__ == '__main__':
-    outdir = config.get('general', 'destination')
-    for target_name in os.listdir(outdir):
-        target_path = os.path.join(outdir, target_name)
-        if os.path.isdir(target_path):
-            indexer.create_index(target_path, os.path.join(target_path, "addons.xml"))
+    parser = ArgumentParser()
+    parser.add_argument('-i', '--input', dest='input', required=True, help="Path to the generated repository")
+    parser.add_argument('-o', '--output', dest='output', required=True)
+    parser.add_argument('-p', '--prettify', dest='prettify', action='store_true', default=False)
+    args = parser.parse_args()
+    create_index(args.input, args.output, prettify=args.prettify)

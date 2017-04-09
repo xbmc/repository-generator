@@ -26,25 +26,11 @@ from distutils.version import LooseVersion
 from io import BytesIO
 from itertools import groupby
 from xml.etree import ElementTree as ET
-from artifacts import Artifact, pack_artifact
-
+from .utils import makedirs_ignore_errors
+from packaging import Artifact, pack_artifact, meets_version_requirements
+from packager.packaging import delete_companion_files
 
 logger = logging.getLogger(__name__)
-
-
-def makedirs(path):
-    try:
-        os.makedirs(path)
-    except OSError:
-        pass
-
-
-def meets_version_requirements(imports, min_versions):
-    for addon_id, imported_version in imports:
-        if addon_id in min_versions:
-            if imported_version < min_versions[addon_id]:
-                return False
-    return True
 
 
 def collect_artifacts(git_repos, refs, min_versions):
@@ -83,29 +69,6 @@ def filter_latest_version(artifacts):
         yield versions[0]
 
 
-def delete_old_artifacts(target_dir, versions_to_keep):
-    for artifact_id in os.listdir(target_dir):
-        artifact_dir = os.path.join(target_dir, artifact_id)
-        if not os.path.isdir(artifact_dir):
-            continue
-
-        zips = [name for name in os.listdir(artifact_dir) if os.path.splitext(name)[1] == '.zip']
-        if len(zips) <= versions_to_keep:
-            continue
-
-        version_from_name = lambda name: os.path.splitext(name)[0].rsplit('-', 1)[1]
-        zips.sort(key=lambda _: LooseVersion(version_from_name(_)), reverse=True)
-
-        for filename in zips[versions_to_keep:]:
-            logger.debug("Removing old artifact %s", filename)
-            os.remove(os.path.join(artifact_dir, filename))
-
-            # TODO: remove after krypton
-            changelog = os.path.join(artifact_dir, 'changelog-%s.txt' % version_from_name(filename))
-            if os.path.exists(changelog):
-                os.remove(changelog)
-
-
 def write_artifact(artifact, outdir):
     """ Reads artifact data from git and writes a zip file (and companion files) to `outdir` """
     repo = git.Repo(artifact.git_repo)
@@ -134,7 +97,7 @@ def update_changed_artifacts(git_repos, refs, min_versions, outdir):
     for artifact in added:
         logger.debug("New artifact %s version %s", artifact.addon_id, artifact.version)
         dest = os.path.join(outdir, artifact.addon_id)
-        makedirs(dest)
+        makedirs_ignore_errors(dest)
         delete_companion_files(dest)
         write_artifact(artifact, dest)
 
@@ -143,20 +106,3 @@ def update_changed_artifacts(git_repos, refs, min_versions, outdir):
         shutil.rmtree(os.path.join(outdir, artifact_id))
 
     return len(added), len(removed)
-
-
-def delete_companion_files(path):
-    for name in os.listdir(path):
-        # TODO: remove after krypton
-        if name.startswith("changelog-") and name.endswith(".txt"):
-            continue
-
-        if os.path.splitext(name)[1] != '.zip':
-            try:
-                if os.path.isdir(os.path.join(path, name)):
-                    shutil.rmtree(os.path.join(path, name))
-                else:
-                    os.remove(os.path.join(path, name))
-            except (IOError, OSError) as ex:
-                logger.warning("Failed to remove companion file '%s'" % os.path.join(path, name))
-                logger.exception(ex)

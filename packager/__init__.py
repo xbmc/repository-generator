@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 #
 #     Copyright (C) 2015 Team Kodi
@@ -17,23 +16,5 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
-import sys
-from indexer import indexer
-try:
-    from ConfigParser import ConfigParser
-except ImportError:
-    from configparser import ConfigParser
-
-config = ConfigParser()
-if not config.read('config.cfg'):
-    print("Fatal: Could not read config file.")
-    sys.exit(1)
-
-
-if __name__ == '__main__':
-    outdir = config.get('general', 'destination')
-    for target_name in os.listdir(outdir):
-        target_path = os.path.join(outdir, target_name)
-        if os.path.isdir(target_path):
-            indexer.create_index(target_path, os.path.join(target_path, "addons.xml"))
+from .gitpackaging import update_changed_artifacts
+from .packaging import delete_old_artifacts

@@ -23,7 +23,6 @@ import logging
 import zipfile
 from lxml import etree as ET
 from xml.dom import minidom
-from argparse import ArgumentParser
 from distutils.version import LooseVersion
 
 
@@ -85,12 +84,3 @@ def create_index(repo_dir, dest, prettify=False):
 
     with gzip.GzipFile(dest + ".gz", 'wb', compresslevel=9, mtime=0) as f:
         f.write(xml)
-
-
-if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('-i', '--input', dest='input', required=True, help="Path to the generated repository")
-    parser.add_argument('-o', '--output', dest='output', required=True)
-    parser.add_argument('-p', '--prettify', dest='prettify', action='store_true', default=False)
-    args = parser.parse_args()
-    create_index(args.input, args.output, prettify=args.prettify)
