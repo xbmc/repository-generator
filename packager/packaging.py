@@ -64,7 +64,10 @@ def pack_artifact(artifact, src_dir, dst_dir):
                     os.makedirs(os.path.join(dst_dir, os.path.dirname(item.text)))
                 except OSError:
                     pass
-                shutil.copyfile(os.path.join(src_dir, item.text), os.path.join(dst_dir, item.text))
+                try:
+                    shutil.copyfile(os.path.join(src_dir, item.text), os.path.join(dst_dir, item.text))
+                except IOError:
+                    logger.warning("Addon %s asset %s is missing.", artifact.addon_id, item.text)
     else:  # for backwards compatibility with add-ons that do not use the assets element
         if os.path.exists(os.path.join(src_dir, "icon.png")):
             shutil.copyfile(os.path.join(src_dir, "icon.png"), os.path.join(dst_dir, "icon.png"))
