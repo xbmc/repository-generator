@@ -24,6 +24,7 @@ from collections import namedtuple
 from distutils.version import LooseVersion
 from xml.etree import ElementTree as ET
 from packager.textures import pack_textures
+from packager.utils import makedirs_ignore_errors
 
 logger = logging.getLogger(__name__)
 
@@ -60,11 +61,9 @@ def pack_artifact(artifact, src_dir, dst_dir):
     if assets is not None:
         for item in assets:
             if item.text:
-                try:
-                    os.makedirs(os.path.join(dst_dir, os.path.dirname(item.text)))
-                except OSError:
-                    pass
+                makedirs_ignore_errors(os.path.join(dst_dir, os.path.dirname(item.text)))
                 shutil.copyfile(os.path.join(src_dir, item.text), os.path.join(dst_dir, item.text))
+
     else:  # for backwards compatibility with add-ons that do not use the assets element
         if os.path.exists(os.path.join(src_dir, "icon.png")):
             shutil.copyfile(os.path.join(src_dir, "icon.png"), os.path.join(dst_dir, "icon.png"))
