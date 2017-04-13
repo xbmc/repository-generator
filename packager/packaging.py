@@ -41,17 +41,7 @@ def meets_version_requirements(imports, min_versions):
 
 def pack_artifact(artifact, src_dir, dst_dir):
     xml = ET.parse(os.path.join(src_dir, 'addon.xml'))
-
     pack_textures(xml, src_dir)
-
-    # Write and compress files in working_dir to the final zip file
-    dest_file = os.path.join(dst_dir, "%s-%s.zip" % (artifact.addon_id, artifact.version))
-    with zipfile.ZipFile(dest_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-        for root, dirs, files in os.walk(src_dir):
-            for name in files:
-                local_path = os.path.join(root, name)
-                archive_dest = artifact.addon_id + '/' + os.path.relpath(local_path, start=src_dir)
-                zf.write(local_path, archive_dest)
 
     # Copy asset files
     assets = xml.find("./extension[@point='kodi.addon.metadata']/assets")
@@ -73,6 +63,15 @@ def pack_artifact(artifact, src_dir, dst_dir):
 
         if os.path.exists(os.path.join(src_dir, "changelog.txt")):
             shutil.copyfile(os.path.join(src_dir, "changelog.txt"), os.path.join(dst_dir, "changelog-%s.txt" % artifact.version))
+
+    # Write and compress files in src_dir to the final zip file
+    dest_file = os.path.join(dst_dir, "%s-%s.zip" % (artifact.addon_id, artifact.version))
+    with zipfile.ZipFile(dest_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(src_dir):
+            for name in files:
+                local_path = os.path.join(root, name)
+                archive_dest = artifact.addon_id + '/' + os.path.relpath(local_path, start=src_dir)
+                zf.write(local_path, archive_dest)
 
 
 def delete_companion_files(path):

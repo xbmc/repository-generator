@@ -16,7 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import contextlib
 import os
+import shutil
+import tempfile
 
 
 def makedirs_ignore_errors(path):
@@ -24,3 +27,12 @@ def makedirs_ignore_errors(path):
         os.makedirs(path)
     except OSError:
         pass
+
+
+@contextlib.contextmanager
+def tempdir():
+    directory = tempfile.mkdtemp()
+    try:
+        yield directory
+    finally:
+        shutil.rmtree(directory, ignore_errors=True)

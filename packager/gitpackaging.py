@@ -20,12 +20,14 @@ import git
 import logging
 import os
 import shutil
-import tempfile
 import zipfile
 from distutils.version import LooseVersion
+from distutils.dir_util import copy_tree
 from io import BytesIO
 from itertools import groupby
 from xml.etree import ElementTree as ET
+
+from packager import utils
 from .utils import makedirs_ignore_errors
 from packaging import Artifact, pack_artifact, meets_version_requirements
 from packager.packaging import delete_companion_files
@@ -72,17 +74,16 @@ def filter_latest_version(artifacts):
 def write_artifact(artifact, outdir):
     """ Reads artifact data from git and writes a zip file (and companion files) to `outdir` """
     repo = git.Repo(artifact.git_repo)
-    working_dir = tempfile.mkdtemp()
-    try:
+    with utils.tempdir() as unpack_dir:
         buffer = BytesIO()
         repo.archive(buffer, artifact.treeish, format="zip")
         with zipfile.ZipFile(buffer, 'r') as zf:
-            zf.extractall(working_dir)
-        pack_artifact(artifact, working_dir, outdir)
-    except Exception as ex:
-        logger.error("Failed package %s:", artifact, exc_info=1)
-    finally:
-        shutil.rmtree(working_dir, ignore_errors=True)
+            zf.extractall(unpack_dir)
+
+        with utils.tempdir() as package_dir:
+            pack_artifact(artifact, unpack_dir, package_dir)
+            delete_companion_files(outdir)
+            copy_tree(package_dir, outdir)
 
 
 def update_changed_artifacts(git_repos, refs, min_versions, outdir):
@@ -100,8 +101,10 @@ def update_changed_artifacts(git_repos, refs, min_versions, outdir):
         logger.debug("New artifact %s version %s", artifact.addon_id, artifact.version)
         dest = os.path.join(outdir, artifact.addon_id)
         makedirs_ignore_errors(dest)
-        delete_companion_files(dest)
-        write_artifact(artifact, dest)
+        try:
+            write_artifact(artifact, dest)
+        except Exception as ex:
+            logger.error("Failed to package %s:", artifact, exc_info=1)
 
     for artifact_id in removed:
         logger.debug("Removing artifact %s", artifact_id)
