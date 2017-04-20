@@ -108,7 +108,7 @@ def update_all_targets():
         except OSError:
             pass
 
-        added, removed = packager.update_changed_artifacts(source_locations, refs, target.min_versions, dest)
+        added, removed = packager.update_changed_artifacts(source_locations, refs, target.min_versions, dest, target.name)
         logger.debug("Results: %d artifacts added, %d artifacts removed", added, removed)
 
         logger.debug("Purging old artifact version... To keep: %d", version_to_keep)
