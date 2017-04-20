@@ -71,7 +71,7 @@ def filter_latest_version(artifacts):
         yield versions[0]
 
 
-def write_artifact(artifact, outdir):
+def write_artifact(artifact, outdir, linkdir = None):
     """ Reads artifact data from git and writes a zip file (and companion files) to `outdir` """
     repo = git.Repo(artifact.git_repo)
     with utils.tempdir() as unpack_dir:
@@ -81,12 +81,13 @@ def write_artifact(artifact, outdir):
             zf.extractall(unpack_dir)
 
         with utils.tempdir() as package_dir:
-            pack_artifact(artifact, unpack_dir, package_dir)
+            pack_artifact(artifact, unpack_dir, package_dir, linkdir)
             delete_companion_files(outdir)
-            copy_tree(package_dir, outdir)
+            for item in os.listdir(package_dir):
+                shutil.move(os.path.join(package_dir, item), outdir)
 
 
-def update_changed_artifacts(git_repos, refs, min_versions, outdir):
+def update_changed_artifacts(git_repos, refs, min_versions, outdir, target_branch):
     """ Returns a tuple with number of new and deleted artifacts. """
     artifacts = collect_artifacts(git_repos, refs, min_versions)
     artifacts = list(filter_latest_version(artifacts))
@@ -100,9 +101,11 @@ def update_changed_artifacts(git_repos, refs, min_versions, outdir):
     for artifact in added:
         logger.debug("New artifact %s version %s", artifact.addon_id, artifact.version)
         dest = os.path.join(outdir, artifact.addon_id)
+        original_branch = artifact.treeish.split(':')[0].split('/')[-1]
+        linkdir = os.path.join('..', '..', original_branch, artifact.addon_id)
         makedirs_ignore_errors(dest)
         try:
-            write_artifact(artifact, dest)
+            write_artifact(artifact, dest, linkdir if target_branch != original_branch else None)
         except Exception as ex:
             logger.error("Failed to package %s:", artifact, exc_info=1)
 

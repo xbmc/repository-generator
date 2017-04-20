@@ -39,9 +39,14 @@ def meets_version_requirements(imports, min_versions):
     return True
 
 
-def pack_artifact(artifact, src_dir, dst_dir):
+def pack_artifact(artifact, src_dir, dst_dir, linkdir = None):
     xml = ET.parse(os.path.join(src_dir, 'addon.xml'))
-    pack_textures(xml, src_dir)
+
+    if linkdir == None:
+        pack_textures(xml, src_dir)
+        copyFunction = lambda src, dst: shutil.copyfile(os.path.join(src_dir, src), os.path.join(dst_dir, dst))
+    else:
+        copyFunction = lambda src, dst: os.symlink(os.path.join(linkdir, dst), os.path.join(dst_dir, dst))
 
     # Copy asset files
     assets = xml.find("./extension[@point='kodi.addon.metadata']/assets")
@@ -52,26 +57,34 @@ def pack_artifact(artifact, src_dir, dst_dir):
         for item in assets:
             if item.text:
                 makedirs_ignore_errors(os.path.join(dst_dir, os.path.dirname(item.text)))
-                shutil.copyfile(os.path.join(src_dir, item.text), os.path.join(dst_dir, item.text))
+                try:
+                    copyFunction(item.text, item.text)
+                except OSError, e:
+                    if e.errno != 17:
+                        raise 
 
     else:  # for backwards compatibility with add-ons that do not use the assets element
         if os.path.exists(os.path.join(src_dir, "icon.png")):
-            shutil.copyfile(os.path.join(src_dir, "icon.png"), os.path.join(dst_dir, "icon.png"))
+            copyFunction("icon.png", "icon.png")
 
         if os.path.exists(os.path.join(src_dir, "fanart.jpg")):
-            shutil.copyfile(os.path.join(src_dir, "fanart.jpg"), os.path.join(dst_dir, "fanart.jpg"))
+            copyFunction("fanart.jpg", "fanart.jpg")
 
         if os.path.exists(os.path.join(src_dir, "changelog.txt")):
-            shutil.copyfile(os.path.join(src_dir, "changelog.txt"), os.path.join(dst_dir, "changelog-%s.txt" % artifact.version))
+            copyFunction("changelog.txt", "changelog-%s.txt" % artifact.version)
 
     # Write and compress files in src_dir to the final zip file
     dest_file = os.path.join(dst_dir, "%s-%s.zip" % (artifact.addon_id, artifact.version))
-    with zipfile.ZipFile(dest_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-        for root, dirs, files in os.walk(src_dir):
-            for name in files:
-                local_path = os.path.join(root, name)
-                archive_dest = artifact.addon_id + '/' + os.path.relpath(local_path, start=src_dir)
-                zf.write(local_path, archive_dest)
+    if linkdir == None or dst_dir == linkdir:
+        with zipfile.ZipFile(dest_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for root, dirs, files in os.walk(src_dir):
+                for name in files:
+                    local_path = os.path.join(root, name)
+                    archive_dest = artifact.addon_id + '/' + os.path.relpath(local_path, start=src_dir)
+                    zf.write(local_path, archive_dest)
+    else:
+        link_file = os.path.join(linkdir, "%s-%s.zip" % (artifact.addon_id, artifact.version))
+        os.symlink(link_file, dest_file)
 
 
 def delete_companion_files(path):
