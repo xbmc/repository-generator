@@ -19,7 +19,6 @@
 import git
 import logging
 import os
-import shutil
 import zipfile
 from distutils.version import LooseVersion
 from distutils.dir_util import copy_tree
@@ -85,15 +84,12 @@ def write_artifact(artifact, outdir):
 
 
 def update_changed_artifacts(git_repos, refs, min_versions, outdir):
-    """ Returns a tuple with number of new and deleted artifacts. """
+    """ Returns a tuple with number of new and a list of all artifacts. """
     artifacts = collect_artifacts(git_repos, refs, min_versions)
     artifacts = list(filter_latest_version(artifacts))
 
     added = [a for a in artifacts if not os.path.exists(
         os.path.join(outdir, a.addon_id, "%s-%s.zip" % (a.addon_id, a.version)))]
-    current = set([name for name in os.listdir(outdir)
-                   if os.path.isdir(os.path.join(outdir, name)) and not name.startswith('.')])
-    removed = current - set([_.addon_id for _ in artifacts])
 
     for artifact in added:
         logger.debug("New artifact %s version %s", artifact.addon_id, artifact.version)
@@ -104,8 +100,4 @@ def update_changed_artifacts(git_repos, refs, min_versions, outdir):
         except Exception as ex:
             logger.error("Failed to package %s:", artifact, exc_info=1)
 
-    for artifact_id in removed:
-        logger.debug("Removing artifact %s", artifact_id)
-        shutil.rmtree(os.path.join(outdir, artifact_id))
-
-    return len(added), len(removed)
+    return len(added), [_.addon_id for _ in artifacts]

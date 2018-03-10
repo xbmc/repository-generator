@@ -17,10 +17,28 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import shutil
 import logging
 from distutils.version import LooseVersion
+from packager import gitpackaging
 
 logger = logging.getLogger(__name__)
+
+
+def update_changed_artifacts(git_repos, refs, min_versions, outdir):
+    """ Returns a tuple with number of new and deleted artifacts. """
+
+    current = set([name for name in os.listdir(outdir)
+                   if os.path.isdir(os.path.join(outdir, name)) and not name.startswith('.')])
+
+    added, artifacts = gitpackaging.update_changed_artifacts(git_repos, refs, min_versions, outdir)
+
+    removed = current - set(artifacts)
+    for artifact_id in removed:
+        logger.debug("Removing artifact %s", artifact_id)
+        shutil.rmtree(os.path.join(outdir, artifact_id))
+
+    return added, len(removed)
 
 
 def delete_old_artifacts(target_dir, versions_to_keep):
