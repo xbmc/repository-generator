@@ -28,9 +28,7 @@ from itertools import groupby
 from xml.etree import ElementTree as ET
 
 from packager import utils
-from .utils import makedirs_ignore_errors
-from packaging import Artifact, pack_artifact, meets_version_requirements
-from packager.packaging import delete_companion_files
+from .utils import Artifact, delete_companion_files, makedirs_ignore_errors, meets_version_requirements, pack_artifact
 
 logger = logging.getLogger(__name__)
 
