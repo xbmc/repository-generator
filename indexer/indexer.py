@@ -73,6 +73,9 @@ def create_index(repo_dir, dest, prettify=False):
             elem = ET.SubElement(metadata_elem, 'size')
             elem.text = str(os.path.getsize(archive))
 
+            elem = ET.SubElement(metadata_elem, 'path')
+            elem.text = str(os.path.relpath(archive, repo_dir))
+
             addons.append(tree)
 
     xml = ET.tostring(addons, encoding='utf-8', xml_declaration=True)
