@@ -21,9 +21,35 @@ import os
 import gzip
 import logging
 import zipfile
+import itertools
+import requests
 from lxml import etree as ET
 from xml.dom import minidom
 from distutils.version import LooseVersion
+from datetime import date, timedelta
+
+
+def fetch_dl_stats():
+    date_str = (date.today().replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
+    filter = ".zip"
+    url = "http://mirrors.kodi.tv/stats?downloadstats=%s&filter=%s&format=json&limit=0" \
+          % (date_str, filter)
+
+    stats = [(item['Filename'], item['Downloads']) for item in requests.get(url).json()]
+
+    # remove stuff we don't want
+    stats = [(path, dls) for path, dls in stats if path.endswith('.zip') and
+             path.startswith('/addons/') and '-' in os.path.basename(path)]
+
+    # map to (addon id, downloads) tuple
+    stats = [(os.path.basename(path).rsplit("-", 1)[0], int(dls)) for path, dls in stats]
+
+    # reduce to max by addon id
+    stats = sorted(stats, key=lambda x: x[0])
+    stats = [(key,  max(dls for _, dls in group))
+             for key, group in itertools.groupby(stats, lambda x: x[0])]
+
+    return dict(stats)
 
 
 def split_version(path):
@@ -42,6 +68,8 @@ def find_archives(repo_dir):
 
 
 def create_index(repo_dir, dest, prettify=False):
+    dlstats = fetch_dl_stats()
+
     parser = ET.XMLParser(remove_blank_text=True)
     addons = ET.Element('addons')
 
@@ -75,6 +103,10 @@ def create_index(repo_dir, dest, prettify=False):
 
             elem = ET.SubElement(metadata_elem, 'path')
             elem.text = str(os.path.relpath(archive, repo_dir))
+
+            if addon_id in dlstats:
+                elem = ET.SubElement(metadata_elem, 'downloads')
+                elem.text = str(dlstats[addon_id])
 
             addons.append(tree)
 
