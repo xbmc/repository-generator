@@ -77,6 +77,7 @@ def update_all_targets():
     outdir = config.get('general', 'destination')
     version_to_keep = config.getint('general', 'version_to_keep')
     source_locations = config.get('source_repo', 'locations').replace('\n', '').split(',')
+    binary_locations = config.get('binary_repo', 'locations').replace('\n', '').split(',')
 
     if not outdir:
         logger.fatal("No destination specified.")
@@ -108,7 +109,7 @@ def update_all_targets():
         except OSError:
             pass
 
-        added, removed = packager.update_changed_artifacts(source_locations, refs, target.min_versions, dest)
+        added, removed = packager.update_changed_artifacts(source_locations, refs, [binary_location + '/' + branch for binary_location in binary_locations for branch in target.branches], target.min_versions, dest)
         logger.debug("Results: %d artifacts added, %d artifacts removed", added, removed)
 
         logger.debug("Purging old artifact version... To keep: %d", version_to_keep)

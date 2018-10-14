@@ -20,18 +20,23 @@ import os
 import shutil
 import logging
 from distutils.version import LooseVersion
+from packager import binarypackaging
 from packager import gitpackaging
 
 logger = logging.getLogger(__name__)
 
 
-def update_changed_artifacts(git_repos, refs, min_versions, outdir):
+def update_changed_artifacts(git_repos, refs, binary_repos, min_versions, outdir):
     """ Returns a tuple with number of new and deleted artifacts. """
 
     current = set([name for name in os.listdir(outdir)
                    if os.path.isdir(os.path.join(outdir, name)) and not name.startswith('.')])
 
     added, artifacts = gitpackaging.update_changed_artifacts(git_repos, refs, min_versions, outdir)
+
+    addedBinary, artifactsBinary = binarypackaging.update_changed_artifacts(binary_repos, min_versions, outdir)
+    added += addedBinary
+    artifacts += artifactsBinary
 
     removed = current - set(artifacts)
     for artifact_id in removed:

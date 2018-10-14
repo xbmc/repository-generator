@@ -31,7 +31,7 @@ def main():
     source = sys.argv[1]
     outdir = sys.argv[2]
 
-    added, removed = packager.update_changed_artifacts([source], ['master'], [], outdir)
+    added, removed = packager.update_changed_artifacts([source], ['master'], [], [], outdir)
     logger.debug("Results: %d artifacts added, %d artifacts removed", added, removed)
 
     if added or removed:

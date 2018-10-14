@@ -42,9 +42,6 @@ def tempdir():
         shutil.rmtree(directory, ignore_errors=True)
 
 
-Artifact = namedtuple('Artifact', ['addon_id', 'version', 'git_repo', 'treeish'])
-
-
 def delete_companion_files(path):
     for name in os.listdir(path):
         # TODO: remove after krypton
