@@ -27,9 +27,12 @@ from itertools import groupby
 from xml.etree import ElementTree as ET
 
 from packager import utils
-from .utils import Artifact, delete_companion_files, makedirs_ignore_errors, meets_version_requirements, pack_artifact
+from .utils import delete_companion_files, makedirs_ignore_errors, meets_version_requirements, pack_artifact
 
 logger = logging.getLogger(__name__)
+
+
+Artifact = namedtuple('Artifact', ['addon_id', 'version', 'git_repo', 'treeish'])
 
 
 def collect_artifacts(git_repos, refs, min_versions):
