@@ -20,7 +20,6 @@ import contextlib
 import os
 import shutil
 import tempfile
-from collections import namedtuple
 from xml.etree import ElementTree as ET
 from packager.textures import pack_textures
 import zipfile

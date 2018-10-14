@@ -19,6 +19,7 @@
 import logging
 import os
 import zipfile
+from collections import namedtuple
 from distutils.version import LooseVersion
 from distutils.dir_util import copy_tree
 from itertools import groupby
