@@ -66,7 +66,7 @@ def collect_artifacts(binary_repos, min_versions):
 
 def filter_latest_version(artifacts):
     artifacts = list(artifacts)
-    artifacts.sort(key=lambda _: _.addon_id)
+    artifacts.sort(key=lambda _: _.addon_id + _.platform)
     for addon_id, versions in groupby(artifacts, key=lambda _: _.addon_id + _.platform):
         versions = list(versions)
         versions.sort(key=lambda _: LooseVersion(_.version), reverse=True)
