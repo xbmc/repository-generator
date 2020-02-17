@@ -50,18 +50,22 @@ def collect_artifacts(binary_repos, min_versions):
                         if os.path.splitext(name)[1] == '.zip' and '-' in name]
                 if len(zips) > 0:
                     zips.sort(key=lambda _: LooseVersion(split_version(_)[1]), reverse=True)
-                    with zipfile.ZipFile(zips[0], 'r') as zf:
-                        try:
-                            tree = ET.fromstring(zf.read(os.path.join(addon_id.split('+')[0], 'addon.xml')))
-                            version = tree.attrib['version'].encode('utf-8')
+                    try:
+                        with zipfile.ZipFile(zips[0], 'r') as zf:
+                            try:
+                                tree = ET.fromstring(zf.read(os.path.join(addon_id.split('+')[0], 'addon.xml')))
+                                version = tree.attrib['version'].encode('utf-8')
 
-                            imports = [(elem.attrib['addon'], LooseVersion(elem.attrib.get('version', '0.0.0')))
-                                       for elem in tree.findall('./requires/import')]
-                            if meets_version_requirements(imports, min_versions):
-                                yield Artifact(addon_id.split('+')[0], version, zips[0], addon_id.split('+')[1])
-                        except (ET.ParseError, KeyError, IndexError) as e:
-                            logging.exception("Failed to read addon info from '%s'. Skipping" % archive)
-                            continue
+                                imports = [(elem.attrib['addon'], LooseVersion(elem.attrib.get('version', '0.0.0')))
+                                           for elem in tree.findall('./requires/import')]
+                                if meets_version_requirements(imports, min_versions):
+                                    yield Artifact(addon_id.split('+')[0], version, zips[0], addon_id.split('+')[1])
+                            except (ET.ParseError, KeyError, IndexError) as e:
+                                logging.exception("Failed to read addon info from '%s'. Skipping" % archive)
+                                continue
+                    except zipfile.BadZipFile as e:
+                        logging.exception("Zip file is corrupted")
+                        continue
 
 
 def filter_latest_version(artifacts):
