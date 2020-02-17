@@ -18,12 +18,14 @@
 
 import contextlib
 import os
+import logging
 import shutil
 import tempfile
 from xml.etree import ElementTree as ET
 from packager.textures import pack_textures
 import zipfile
 
+logger = logging.getLogger(__name__)
 
 def makedirs_ignore_errors(path):
     try:
