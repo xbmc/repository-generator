@@ -63,7 +63,7 @@ def collect_artifacts(binary_repos, min_versions):
                             except (ET.ParseError, KeyError, IndexError) as e:
                                 logging.exception("Failed to read addon info from '%s'. Skipping" % archive)
                                 continue
-                    except zipfile.BadZipFile as e:
+                    except zipfile.BadZipfile as e:
                         logging.exception("Zip file is corrupted")
                         continue
 
