@@ -41,7 +41,11 @@ def update_changed_artifacts(git_repos, refs, binary_repos, min_versions, outdir
     removed = current - set(artifacts)
     for artifact_id in removed:
         logger.debug("Removing artifact %s", artifact_id)
-        shutil.rmtree(os.path.join(outdir, artifact_id))
+        try:
+            shutil.rmtree(os.path.join(outdir, artifact_id))
+        except (OSError) as e:
+            logger.error("Error removing artifact: %s", e)
+            continue
 
     return added, len(removed)
 
