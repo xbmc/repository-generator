@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 # -*- coding: utf-8 -*-
 #
 #     Copyright (C) 2015 Team Kodi
@@ -18,6 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import re
 import gzip
 import logging
 import zipfile
@@ -25,18 +26,29 @@ from lxml import etree as ET
 from xml.dom import minidom
 from distutils.version import LooseVersion
 
+#logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
+#logging.basicConfig(level=logging.WARN)
 
 def split_version(path):
-    return os.path.splitext(os.path.basename(path))[0].rsplit('-', 1)
+    result = os.path.splitext(os.path.basename(path))
+    m = re.match("([\w\.]+.*)-(\d+\.\d+\.\d+)", result[0])
+    if m:
+        return m.groups()
+    else:
+        return None, None
+
 
 
 def find_archives(repo_dir):
     for addon_id in os.listdir(repo_dir):
+        logging.debug("find_archives repo_dir: {} addon_id {}".format(repo_dir, addon_id))
         if os.path.isdir(os.path.join(repo_dir, addon_id)):
             zips = [os.path.join(repo_dir, addon_id, name)
                     for name in os.listdir(os.path.join(repo_dir, addon_id))
-                    if os.path.splitext(name)[1] == '.zip' and '-' in name]
+                    if os.path.splitext(name)[1] == '.zip' and '-' in name and split_version(name) != (None, None)]
             if len(zips) > 0:
+                logging.debug("find_archives found zips for addon_id {}: {}".format(addon_id, zips))
                 zips.sort(key=lambda _: LooseVersion(split_version(_)[1]), reverse=True)
                 yield zips[0]
 
@@ -50,8 +62,14 @@ def create_index(repo_dir, dest, prettify=False):
 
     for archive in archives:
         addon_id, version = split_version(archive)
+        if (addon_id is None or version is None):
+            logging.exception("Failed to parse addon version from '%s'. Skipping" % archive)
+            continue
+
         with zipfile.ZipFile(archive, 'r') as zf:
             tree = None
+
+            logging.info("parsing archive {}: addon_id: {}, version: {}".format(archive, addon_id, version))
             try:
                 tree = ET.fromstring(zf.read(os.path.join(addon_id, 'addon.xml')), parser)
             except (ET.ParseError, KeyError, IndexError) as e:
