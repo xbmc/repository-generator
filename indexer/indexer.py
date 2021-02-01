@@ -32,9 +32,14 @@ logging.basicConfig(level=logging.INFO)
 
 def split_version(path):
     result = os.path.splitext(os.path.basename(path))
-    m = re.match("([\w\.]+.*)-(\d+\.\d+\.\d+)", result[0])
+    # extract name and version from file name
+    # expexted format: addontype.addonname-version.zip
+    # where version = a.b[.c][.d][.e][.f][+~tag]
+    # e.g. script.module.idna-2.8.zip, script.module.idna-2.8.1.zip, ..., script.module.idna-2.8.1.2.3.4.zip
+    #      script.module.idna-2.8.10+git010cab3.zip
+    m = re.match("([\w\.]+.*)-(\d+\.\d+(\.\d+){0,4}([+~\w]+)?)", result[0])
     if m:
-        return m.groups()
+        return m.groups()[0:2]
     else:
         return None, None
 
