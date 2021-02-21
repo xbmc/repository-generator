@@ -42,6 +42,7 @@ def split_version(path):
     if parts and re.match(r"^[\w.\-@]+$", parts[0]) and re.match(r"^\d+\.\d+(\.\d+){0,4}([+~\w.]+)?$", parts[1]):
         return tuple(parts)
     else:
+        logging.warn("Cannot split version from file name {}".format(path))
         return None, None
 
 
