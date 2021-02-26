@@ -32,12 +32,18 @@ logging.basicConfig(level=logging.INFO)
 
 def split_version(path):
     result = os.path.splitext(os.path.basename(path))
-    m = re.match("([\w\.]+.*)-(\d+\.\d+\.\d+)", result[0])
-    if m:
-        return m.groups()
+    # extract name and version from file name
+    # expected format: addontype.addonname-version.zip
+    # where version = a.b[.c][.d][.e][.f][+~tag]
+    # e.g. script.module.idna-2.8.zip, script.module.idna-2.8.1.zip, ..., script.module.idna-2.8.1.2.3.4.zip
+    #      script.module.idna-2.8.10+git010cab3.zip script.module.idna-2.8.10+matrix.2.zip
+    #      resource.images.languageflags-flat-0.0.1.zip resource.language.sr_rs@latin-3.0.9.zip
+    parts = result[0].rsplit("-", 1)
+    if parts and re.match(r"^[\w.\-@]+$", parts[0]) and re.match(r"^\d+\.\d+(\.\d+){0,4}([+~\w.]+)?$", parts[1]):
+        return tuple(parts)
     else:
+        logging.warn("Cannot split version from file name {}".format(path))
         return None, None
-
 
 
 def find_archives(repo_dir):
@@ -75,6 +81,9 @@ def create_index(repo_dir, dest, prettify=False):
             except (ET.ParseError, KeyError, IndexError) as e:
                 logging.exception("Failed to read addon info from '%s'. Skipping" % archive)
                 continue
+
+            if tree.get('id') != addon_id or tree.get('version') != version:
+                logging.warning("archive {} has version mismatch between filename-parsed id/version ({}, {}) and addon.xml id/version ({}, {})".format(archive, addon_id, version, tree.get('id'), tree.get('version')))
 
             metadata_elem = tree.find("./extension[@point='kodi.addon.metadata']")
             if metadata_elem is None:
