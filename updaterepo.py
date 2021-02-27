@@ -23,6 +23,7 @@ import git
 import sys
 import logging
 import packager
+import packager.textures
 from distutils.version import LooseVersion
 from io import BytesIO
 
@@ -120,6 +121,17 @@ def main():
     filename = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), 'config.cfg')
     if not config.read(filename):
         print("Fatal: Could not read config file '%s'" % filename)
+        sys.exit(1)
+
+    try:
+        texturepacker_override = config.get('general', 'texturepacker')
+    except:
+        texturepacker_override = ""
+
+    if texturepacker_override:
+        packager.textures.texturepacker_binary = texturepacker_override
+    if not packager.textures.check_texturepacker():
+        print("Fatal: Could not invoke TexturePacker with command '%s'" % packager.textures.texturepacker_binary)
         sys.exit(1)
 
     logging.basicConfig(level=config.getint('debug', 'level'), format='%(levelname)s [%(name)s] %(message)s')
