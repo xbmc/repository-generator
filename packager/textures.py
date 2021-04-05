@@ -21,6 +21,7 @@ import logging
 import subprocess
 
 logger = logging.getLogger(__name__)
+texturepacker_binary = 'TexturePacker'
 
 
 def pack_textures(xml, working_dir):
@@ -56,6 +57,13 @@ def remove_non_xbt_files(directory):
 
 def run_texturepacker(input, output):
     logger.debug("Running texturepacker on %s ...", input)
-    cmd = ['TexturePacker', '-dupecheck', '-input', input, '-output', output]
+    cmd = [texturepacker_binary, '-dupecheck', '-input', input, '-output', output]
     with open(os.devnull, 'w') as f:
         subprocess.check_call(cmd, stdout=f, stderr=f)
+
+def check_texturepacker():
+    with open(os.devnull, 'w') as f:
+        try:
+            return subprocess.call([texturepacker_binary], stdout=f, stderr=f) == 1
+        except:
+            return False
