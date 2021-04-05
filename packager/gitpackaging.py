@@ -47,18 +47,20 @@ def collect_artifacts(git_repos, refs, min_versions):
                 logger.warning("No such ref %s in repo %s. Skipping.", ref, repo_path)
                 continue
             for directory in repo.refs[ref].commit.tree.trees:
-                try:
-                    addon_xml = directory['addon.xml'].data_stream.read()
-                    tree = ET.fromstring(addon_xml)
-                    artifact_id = directory.name.encode('utf-8')
-                    version = tree.attrib['version'].encode('utf-8')
+                # avoid processing directories starting with a . (e.g. .github)
+                if not directory.name.encode('utf-8').startswith("."):
+                    try:
+                        addon_xml = directory['addon.xml'].data_stream.read()
+                        tree = ET.fromstring(addon_xml)
+                        artifact_id = directory.name.encode('utf-8')
+                        version = tree.attrib['version'].encode('utf-8')
 
-                    imports = [(elem.attrib['addon'], LooseVersion(elem.attrib.get('version', '0.0.0')))
-                               for elem in tree.findall('./requires/import')]
-                    if meets_version_requirements(imports, min_versions):
-                        yield Artifact(artifact_id, version, repo_path, ref + ":" + artifact_id)
-                except (ET.ParseError, KeyError, IndexError) as e:
-                    logger.exception("Failed to read addon data from directory '%s'" % directory.name.encode('utf-8'))
+                        imports = [(elem.attrib['addon'], LooseVersion(elem.attrib.get('version', '0.0.0')))
+                                for elem in tree.findall('./requires/import')]
+                        if meets_version_requirements(imports, min_versions):
+                            yield Artifact(artifact_id, version, repo_path, ref + ":" + artifact_id)
+                    except (ET.ParseError, KeyError, IndexError) as e:
+                        logger.exception("Failed to read addon data from directory '%s'" % directory.name.encode('utf-8'))
 
 
 def filter_latest_version(artifacts):
