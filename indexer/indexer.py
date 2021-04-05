@@ -38,9 +38,9 @@ def split_version(path):
     # e.g. script.module.idna-2.8.zip, script.module.idna-2.8.1.zip, ..., script.module.idna-2.8.1.2.3.4.zip
     #      script.module.idna-2.8.10+git010cab3.zip script.module.idna-2.8.10+matrix.2.zip
     #      resource.images.languageflags-flat-0.0.1.zip resource.language.sr_rs@latin-3.0.9.zip
-    parts = result[0].rsplit("-", 1)
-    if parts and re.match(r"^[\w.\-@]+$", parts[0]) and re.match(r"^\d+\.\d+(\.\d+){0,4}([+~\w.]+)?$", parts[1]):
-        return tuple(parts)
+    m = re.match(r"^([\w\.]+.*)-(\d+\.\d+(\.\d+){0,4}([+~\w]+(\.\d+)?)?)$", result[0])
+    if m:
+        return m.groups()[0:2]
     else:
         logging.warn("Cannot split version from file name {}".format(path))
         return None, None
