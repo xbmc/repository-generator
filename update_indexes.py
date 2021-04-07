@@ -33,7 +33,12 @@ if not config.read('config.cfg'):
 
 if __name__ == '__main__':
     outdir = config.get('general', 'destination')
+    file_changed = False
     for target_name in os.listdir(outdir):
         target_path = os.path.join(outdir, target_name)
         if os.path.isdir(target_path):
-            indexer.create_index(target_path, os.path.join(target_path, "addons.xml"))
+            file_changed |= indexer.create_index(target_path, os.path.join(target_path, "addons.xml"))
+
+    if not file_changed:
+        # Special exit code 64 indicates that no files were changed
+        sys.exit(64)
