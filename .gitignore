@@ -43,3 +43,5 @@ output/*/index.html
 docs/_build
 
 __pycache__/*
+
+mirrorsync.sh
