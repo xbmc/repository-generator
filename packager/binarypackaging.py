@@ -41,7 +41,7 @@ def split_version(path):
 def collect_artifacts(binary_repos, min_versions):
     for repo_path in binary_repos:
         if not os.path.isdir(repo_path):
-            logger.warning("No such repo %s. Skipping.", repo_path)
+            logger.debug("No such repo %s. Skipping.", repo_path)
             continue
         for addon_id in os.listdir(os.path.join(repo_path)):
             if os.path.isdir(os.path.join(repo_path, addon_id)):
@@ -101,7 +101,7 @@ def update_changed_artifacts(binary_repos, min_versions, outdir):
         os.path.join(outdir, "%s+%s" % (a.addon_id, a.platform), "%s-%s.zip" % (a.addon_id, a.version)))]
 
     for artifact in added:
-        logger.debug("New artifact %s+%s version %s", artifact.addon_id, artifact.platform, artifact.version)
+        logger.info("New artifact %s+%s version %s", artifact.addon_id, artifact.platform, artifact.version)
         dest = os.path.join(outdir, "%s+%s" % (artifact.addon_id, artifact.platform))
         makedirs_ignore_errors(dest)
         try:
