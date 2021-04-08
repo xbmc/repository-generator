@@ -44,7 +44,7 @@ def collect_artifacts(git_repos, refs, min_versions):
             continue
         for ref in refs:
             if ref not in repo.refs:
-                logger.warning("No such ref %s in repo %s. Skipping.", ref, repo_path)
+                logger.debug("No such ref %s in repo %s. Skipping.", ref, repo_path)
                 continue
             for directory in repo.refs[ref].commit.tree.trees:
                 # avoid processing directories starting with a . (e.g. .github)

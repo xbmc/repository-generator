@@ -41,7 +41,7 @@ def split_version(path):
 def collect_artifacts(binary_repos, min_versions):
     for repo_path in binary_repos:
         if not os.path.isdir(repo_path):
-            logger.warning("No such repo %s. Skipping.", repo_path)
+            logger.debug("No such repo %s. Skipping.", repo_path)
             continue
         for addon_id in os.listdir(os.path.join(repo_path)):
             if os.path.isdir(os.path.join(repo_path, addon_id)):
@@ -61,10 +61,10 @@ def collect_artifacts(binary_repos, min_versions):
                                 if meets_version_requirements(imports, min_versions):
                                     yield Artifact(addon_id.split('+')[0], version, zips[0], addon_id.split('+')[1])
                             except (ET.ParseError, KeyError, IndexError) as e:
-                                logging.exception("Failed to read addon info from '%s'. Skipping" % archive)
+                                logging.exception("Failed to read addon info from '%s'. Skipping" % zips[0])
                                 continue
                     except zipfile.BadZipfile as e:
-                        logging.exception("Zip file is corrupted")
+                        logging.exception("Zip file {} is corrupted".format(zips[0]))
                         continue
 
 
@@ -101,7 +101,7 @@ def update_changed_artifacts(binary_repos, min_versions, outdir):
         os.path.join(outdir, "%s+%s" % (a.addon_id, a.platform), "%s-%s.zip" % (a.addon_id, a.version)))]
 
     for artifact in added:
-        logger.debug("New artifact %s+%s version %s", artifact.addon_id, artifact.platform, artifact.version)
+        logger.info("New artifact %s+%s version %s", artifact.addon_id, artifact.platform, artifact.version)
         dest = os.path.join(outdir, "%s+%s" % (artifact.addon_id, artifact.platform))
         makedirs_ignore_errors(dest)
         try:
