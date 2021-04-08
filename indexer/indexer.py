@@ -109,8 +109,21 @@ def create_index(repo_dir, dest, prettify=False):
     if prettify:
         xml = minidom.parseString(xml).toprettyxml(encoding='utf-8', indent="  ")
 
-    with open(dest, 'wb') as f:
-        f.write(xml)
+    no_change = False
+    try:
+        with open(dest, 'rb') as f:
+            no_change = (xml == f.read())
+    except IOError:
+        pass
 
-    with gzip.GzipFile(dest + ".gz", 'wb', compresslevel=9, mtime=0) as f:
-        f.write(xml)
+    if no_change:
+        logging.info("Contents not changed, not touching {}".format(dest))
+    else:
+        logging.info("Writing {}".format(dest))
+        with open(dest, 'wb') as f:
+            f.write(xml)
+
+        with gzip.GzipFile(dest + ".gz", 'wb', compresslevel=9, mtime=0) as f:
+            f.write(xml)
+
+    return not no_change
