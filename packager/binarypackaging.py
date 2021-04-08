@@ -64,7 +64,7 @@ def collect_artifacts(binary_repos, min_versions):
                                 logging.exception("Failed to read addon info from '%s'. Skipping" % zips[0])
                                 continue
                     except zipfile.BadZipfile as e:
-                        logging.exception("Zip file is corrupted")
+                        logging.exception("Zip file {} is corrupted".format(zips[0]))
                         continue
 
 
