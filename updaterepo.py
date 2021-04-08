@@ -101,19 +101,19 @@ def update_all_targets():
     for target in current_targets:
         refs = [remote_name + '/' + branch for branch in target.branches]
         dest = os.path.join(outdir, target.name)
-        logger.debug("============================ %s ============================", target.name)
-        logger.debug("Branches: %s", target.branches)
-        logger.debug("Min. versions: %s", target.min_versions)
-        logger.debug("Destination: %s", dest)
+        logger.info("============================ %s ============================", target.name)
+        logger.info("Branches: %s", target.branches)
+        logger.info("Min. versions: %s", target.min_versions)
+        logger.info("Destination: %s", dest)
         try:
             os.makedirs(dest)
         except OSError:
             pass
 
         added, removed = packager.update_changed_artifacts(source_locations, refs, [binary_location + '/' + branch for binary_location in binary_locations for branch in target.branches], target.min_versions, dest)
-        logger.debug("Results: %d artifacts added, %d artifacts removed", added, removed)
+        logger.info("Results: %d artifacts added, %d artifacts removed", added, removed)
 
-        logger.debug("Purging old artifact version... To keep: %d", version_to_keep)
+        logger.info("Purging old artifact version... To keep: %d", version_to_keep)
         packager.delete_old_artifacts(dest, version_to_keep)
 
 
