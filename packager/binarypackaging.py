@@ -61,7 +61,7 @@ def collect_artifacts(binary_repos, min_versions):
                                 if meets_version_requirements(imports, min_versions):
                                     yield Artifact(addon_id.split('+')[0], version, zips[0], addon_id.split('+')[1])
                             except (ET.ParseError, KeyError, IndexError) as e:
-                                logging.exception("Failed to read addon info from '%s'. Skipping" % archive)
+                                logging.exception("Failed to read addon info from '%s'. Skipping" % zips[0])
                                 continue
                     except zipfile.BadZipfile as e:
                         logging.exception("Zip file is corrupted")
